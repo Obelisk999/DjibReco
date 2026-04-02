@@ -1,0 +1,337 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inscription — DjibReco</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #ff3c5f; --accent: #ff8c42; --gold: #ffd166;
+      --teal: #06d6a0; --violet: #7c3aed;
+      --dark: #080c17; --dark2: #0d1424; --dark3: #141e33;
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    html,body { height:100%; }
+    body { font-family:'Inter',sans-serif; background:var(--dark); overflow:hidden; }
+
+    /* ─ LAYOUT ─ */
+    .page { display:grid; grid-template-columns:520px 1fr; height:100vh; }
+
+    /* ─ PANNEAU GAUCHE FORMULAIRE ─ */
+    .f-panel {
+      background:var(--dark2);
+      border-right:1px solid rgba(255,255,255,.06);
+      display:flex; flex-direction:column;
+      justify-content:center;
+      padding:2rem 2.8rem;
+      overflow-y:auto;
+      position:relative;
+    }
+    .f-panel::before {
+      content:''; position:absolute; top:0;left:0;right:0; height:2px;
+      background:linear-gradient(90deg,transparent,var(--teal),var(--primary),var(--accent),transparent);
+      opacity:.6;
+    }
+
+    .f-head { margin-bottom:1.6rem; }
+    .f-brand {
+      font-family:'Space Grotesk',sans-serif; font-size:1.5rem;
+      font-weight:700; letter-spacing:-1px; color:white;
+      text-decoration:none; display:inline-block; margin-bottom:1.4rem;
+    }
+    .f-brand span { color:var(--primary); }
+    .f-brand em { color:var(--gold); font-style:normal; }
+
+    .f-head h2 {
+      font-family:'Space Grotesk',sans-serif;
+      font-size:1.85rem; font-weight:700; color:white;
+      letter-spacing:-.5px; margin-bottom:.35rem;
+    }
+    .f-head p { color:rgba(255,255,255,.38); font-size:.87rem; }
+
+    .f-label {
+      display:block; color:rgba(255,255,255,.5);
+      font-size:.72rem; font-weight:700;
+      text-transform:uppercase; letter-spacing:.06em;
+      margin-bottom:.4rem;
+    }
+
+    .f-row { display:grid; grid-template-columns:1fr 1fr; gap:.8rem; }
+
+    .f-input-wrap { position:relative; margin-bottom:1rem; }
+    .f-input-wrap i.ico {
+      position:absolute; left:14px; top:50%;
+      transform:translateY(-50%);
+      color:rgba(255,255,255,.28); font-size:.95rem; pointer-events:none;
+    }
+    .f-input-wrap input {
+      width:100%; background:rgba(255,255,255,.06);
+      border:1.5px solid rgba(255,255,255,.1);
+      border-radius:14px; color:white;
+      padding:.8rem 1rem .8rem 2.8rem;
+      font-size:.9rem; font-family:'Inter',sans-serif;
+      transition:border-color .2s, background .2s;
+    }
+    .f-input-wrap input:focus {
+      outline:none; border-color:var(--primary);
+      background:rgba(255,60,95,.06);
+      box-shadow:0 0 0 3px rgba(255,60,95,.14);
+    }
+    .f-input-wrap input::placeholder { color:rgba(255,255,255,.22); }
+    .f-input-wrap.no-icon input { padding-left:1rem; }
+
+    .f-error { color:#f87171; font-size:.73rem; margin-top:3px; margin-bottom:.5rem; }
+
+    .f-alert {
+      background:rgba(248,113,113,.1); border:1px solid rgba(248,113,113,.25);
+      border-radius:12px; padding:.7rem 1rem;
+      color:#f87171; font-size:.83rem; margin-bottom:1rem;
+      display:flex; align-items:center; gap:.6rem;
+    }
+
+    .f-btn {
+      width:100%; padding:.95rem; border:none; border-radius:14px;
+      background:linear-gradient(135deg,var(--primary),var(--accent));
+      color:white; font-size:1rem; font-weight:700;
+      cursor:pointer; font-family:'Inter',sans-serif;
+      display:flex; align-items:center; justify-content:center; gap:.6rem;
+      box-shadow:0 8px 28px rgba(255,60,95,.35);
+      transition:transform .15s, box-shadow .15s;
+      margin-top:1.2rem; position:relative; overflow:hidden;
+    }
+    .f-btn::after {
+      content:''; position:absolute; top:-50%;left:-60%;
+      width:40%;height:200%;
+      background:rgba(255,255,255,.18); transform:skewX(-20deg); transition:left .5s;
+    }
+    .f-btn:hover::after { left:120%; }
+    .f-btn:hover { transform:translateY(-2px); box-shadow:0 14px 36px rgba(255,60,95,.4); }
+    .f-btn:active { transform:translateY(0); }
+
+    .f-terms {
+      text-align:center; color:rgba(255,255,255,.25);
+      font-size:.73rem; margin-top:.7rem; line-height:1.5;
+    }
+    .f-switch {
+      text-align:center; color:rgba(255,255,255,.38);
+      font-size:.87rem; margin-top:1rem;
+    }
+    .f-switch a { color:var(--primary); text-decoration:none; font-weight:700; }
+    .f-switch a:hover { text-decoration:underline; }
+
+    /* ─ PANNEAU DROIT VISUEL ─ */
+    .v-panel {
+      position:relative; overflow:hidden;
+      background:var(--dark2);
+      border-left:1px solid rgba(255,255,255,.04);
+    }
+
+    .v-mosaic {
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      grid-template-rows:1fr 1fr 1fr;
+      height:100%; gap:3px;
+    }
+    .v-mosaic img { width:100%; height:100%; object-fit:cover; transition:transform 9s ease; }
+    .v-mosaic img:hover { transform:scale(1.05); }
+    .v-r2 { grid-row:span 2; }
+
+    .v-overlay {
+      position:absolute; inset:0;
+      background:linear-gradient(225deg, rgba(8,12,23,.75) 0%, rgba(8,12,23,.2) 50%, rgba(8,12,23,.85) 100%);
+    }
+
+    .v-content {
+      position:absolute; inset:0;
+      display:flex; flex-direction:column;
+      justify-content:flex-end;
+      padding:2.5rem;
+    }
+
+    .v-top {
+      position:absolute; top:2.5rem; right:2.5rem;
+    }
+    .v-back {
+      display:inline-flex; align-items:center; gap:6px;
+      color:rgba(255,255,255,.55); text-decoration:none;
+      font-size:.82rem; font-weight:500; transition:color .2s;
+    }
+    .v-back:hover { color:white; }
+
+    .v-title {
+      font-family:'Space Grotesk',sans-serif;
+      font-size:2.2rem; font-weight:700; line-height:1.15;
+      letter-spacing:-1px; color:white; margin-bottom:1rem;
+    }
+    .v-title span {
+      background:linear-gradient(135deg,var(--teal),var(--gold));
+      -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+    }
+    .v-desc { color:rgba(255,255,255,.5); font-size:.88rem; line-height:1.7; max-width:380px; margin-bottom:1.6rem; }
+
+    .v-features { display:flex; flex-direction:column; gap:.6rem; }
+    .v-feat {
+      display:flex; align-items:center; gap:.75rem;
+      background:rgba(255,255,255,.08); backdrop-filter:blur(10px);
+      border:1px solid rgba(255,255,255,.12); border-radius:12px;
+      padding:.6rem 1rem; color:white; font-size:.82rem; font-weight:600;
+    }
+    .v-feat-icon {
+      width:32px; height:32px; border-radius:9px;
+      display:flex; align-items:center; justify-content:center;
+      font-size:.9rem; flex-shrink:0;
+    }
+    .fi-red   { background:rgba(255,60,95,.2); color:var(--primary); }
+    .fi-gold  { background:rgba(255,209,102,.15); color:var(--gold); }
+    .fi-teal  { background:rgba(6,214,160,.15); color:var(--teal); }
+    .fi-blue  { background:rgba(124,58,237,.2); color:#a78bfa; }
+
+    /* Aurora orbs */
+    .orb {
+      position:absolute; border-radius:50%;
+      filter:blur(80px); pointer-events:none;
+    }
+    .orb-1 { width:450px;height:450px; top:-100px;left:-80px; background:radial-gradient(circle,rgba(6,214,160,.08),transparent 70%); animation:orb-float 14s ease-in-out infinite; }
+    .orb-2 { width:300px;height:300px; bottom:-60px;right:-40px; background:radial-gradient(circle,rgba(255,60,95,.07),transparent 70%); animation:orb-float 11s ease-in-out infinite reverse; }
+    @keyframes orb-float { 0%,100%{transform:translate(0,0);} 50%{transform:translate(20px,-30px);} }
+
+    @media(max-width:900px) {
+      .page { grid-template-columns:1fr; }
+      .v-panel { display:none; }
+      .f-panel { height:100vh; overflow-y:auto; }
+      body { overflow:auto; }
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <!-- ══ PANNEAU FORMULAIRE (gauche) ══ -->
+  <div class="f-panel">
+
+    <div class="f-head">
+      <a href="{% url 'accueil' %}" class="f-brand"><span>Djib</span>Reco<em>•</em></a>
+      <h2>Créer un compte</h2>
+      <p>Rejoignez la communauté culinaire de Djibouti — c'est gratuit !</p>
+    </div>
+
+    {% if form.non_field_errors %}
+    <div class="f-alert"><i class="bi bi-exclamation-triangle-fill"></i>{{ form.non_field_errors|join:", " }}</div>
+    {% endif %}
+
+    <form method="post">
+      {% csrf_token %}
+
+      <div class="f-row">
+        <div>
+          <label class="f-label">Prénom *</label>
+          <div class="f-input-wrap">
+            <i class="bi bi-person ico"></i>
+            {{ form.first_name }}
+          </div>
+          {% if form.first_name.errors %}<div class="f-error">{{ form.first_name.errors|join:", " }}</div>{% endif %}
+        </div>
+        <div>
+          <label class="f-label">Nom</label>
+          <div class="f-input-wrap no-icon">
+            {{ form.last_name }}
+          </div>
+        </div>
+      </div>
+
+      <label class="f-label">Nom d'utilisateur *</label>
+      <div class="f-input-wrap">
+        <i class="bi bi-at ico"></i>
+        {{ form.username }}
+      </div>
+      {% if form.username.errors %}<div class="f-error">{{ form.username.errors|join:", " }}</div>{% endif %}
+
+      <label class="f-label">Adresse email *</label>
+      <div class="f-input-wrap">
+        <i class="bi bi-envelope ico"></i>
+        {{ form.email }}
+      </div>
+      {% if form.email.errors %}<div class="f-error">{{ form.email.errors|join:", " }}</div>{% endif %}
+
+      <div class="f-row">
+        <div>
+          <label class="f-label">Mot de passe *</label>
+          <div class="f-input-wrap">
+            <i class="bi bi-lock ico"></i>
+            {{ form.password1 }}
+          </div>
+          {% if form.password1.errors %}<div class="f-error">{{ form.password1.errors|join:", " }}</div>{% endif %}
+        </div>
+        <div>
+          <label class="f-label">Confirmer *</label>
+          <div class="f-input-wrap">
+            <i class="bi bi-shield-check ico"></i>
+            {{ form.password2 }}
+          </div>
+          {% if form.password2.errors %}<div class="f-error">{{ form.password2.errors|join:", " }}</div>{% endif %}
+        </div>
+      </div>
+
+      <button type="submit" class="f-btn">
+        <i class="bi bi-person-plus"></i>
+        Créer mon compte gratuitement
+      </button>
+    </form>
+
+    <p class="f-terms">En créant un compte, vous acceptez nos conditions d'utilisation.</p>
+
+    <p class="f-switch">
+      Déjà membre ?
+      <a href="{% url 'connexion' %}">Se connecter</a>
+    </p>
+  </div>
+
+  <!-- ══ PANNEAU VISUEL (droite) ══ -->
+  <div class="v-panel">
+    <div class="v-mosaic">
+      <img src="https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&h=900&fit=crop&q=90" alt="">
+      <img src="https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=500&h=350&fit=crop&q=90" alt="">
+      <img class="v-r2" src="https://images.unsplash.com/photo-1467003909585-2f8a72700288?w=500&h=700&fit=crop&q=90" alt="">
+      <img src="https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?w=500&h=350&fit=crop&q=90" alt="">
+    </div>
+    <div class="v-overlay"></div>
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+
+    <div class="v-top">
+      <a href="{% url 'accueil' %}" class="v-back"><i class="bi bi-arrow-left"></i> Retour</a>
+    </div>
+
+    <div class="v-content">
+      <h2 class="v-title">La cuisine de Djibouti,<br><span>dans votre poche</span></h2>
+      <p class="v-desc">Découvrez, notez et sauvegardez les meilleures adresses culinaires de Djibouti. Votre aventure gastronomique commence ici.</p>
+      <div class="v-features">
+        <div class="v-feat">
+          <div class="v-feat-icon fi-red"><i class="bi bi-star-fill"></i></div>
+          <div><strong>Notez vos restaurants</strong> — partagez votre expérience</div>
+        </div>
+        <div class="v-feat">
+          <div class="v-feat-icon fi-gold"><i class="bi bi-heart-fill"></i></div>
+          <div><strong>Sauvegardez vos favoris</strong> — retrouvez-les facilement</div>
+        </div>
+        <div class="v-feat">
+          <div class="v-feat-icon fi-teal"><i class="bi bi-magic"></i></div>
+          <div><strong>Recommandations</strong> — selon vos goûts</div>
+        </div>
+        <div class="v-feat">
+          <div class="v-feat-icon fi-blue"><i class="bi bi-layout-dashboard"></i></div>
+          <div><strong>Tableau de bord</strong> — gérez votre espace</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

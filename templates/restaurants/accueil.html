@@ -1,0 +1,304 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}DjibReco — Restaurants & Cafés à Djibouti{% endblock %}
+
+{% block content %}
+
+<!-- ═══ HERO ══════════════════════════════════════════════════════ -->
+<section class="hero">
+  <div class="hero-bg-img"></div>
+  <div class="hero-overlay"></div>
+  <div class="hero-aurora">
+    <div class="aurora-1"></div>
+    <div class="aurora-2"></div>
+    <div class="aurora-3"></div>
+  </div>
+
+  <div class="container py-5">
+    <div class="row align-items-center g-5">
+      <div class="col-lg-6 hero-content">
+        <div class="hero-eyebrow">
+          <i class="bi bi-geo-alt-fill"></i>
+          Djibouti, Corne de l'Afrique
+        </div>
+        <h1 class="hero-title">
+          Découvrez les<br>
+          <span class="highlight">saveurs uniques</span><br>
+          de Djibouti
+        </h1>
+        <p class="hero-subtitle">
+          Restaurants, cafés, plats traditionnels et tendances. Trouvez votre prochaine adresse favorite parmi les meilleures tables de la ville.
+        </p>
+
+        <form class="hero-search-wrap" id="heroSearchForm">
+          {% csrf_token %}
+          <i class="bi bi-search me-2" style="color:rgba(255,255,255,0.35);font-size:.95rem;"></i>
+          <input type="text" id="heroSearchInput" placeholder="Restaurant, quartier, cuisine...">
+          <button type="submit" class="btn-hero-search">
+            <i class="bi bi-arrow-right me-1"></i>Explorer
+          </button>
+        </form>
+
+        <div class="hero-stats">
+          <div class="hero-stat-item">
+            <span class="hero-stat-num">{{ total_restaurants }}+</span>
+            <span class="hero-stat-label">Restaurants</span>
+          </div>
+          <div class="hero-stat-item">
+            <span class="hero-stat-num">{{ total_categories }}</span>
+            <span class="hero-stat-label">Catégories</span>
+          </div>
+          <div class="hero-stat-item">
+            <span class="hero-stat-num">215+</span>
+            <span class="hero-stat-label">Plats au menu</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-6 hero-visual d-none d-lg-flex">
+        <div class="hero-img-grid">
+          <div class="hero-img-card">
+            <img src="https://images.unsplash.com/photo-1559339352-11d035aa65de?w=420&h=300&fit=crop&q=90" alt="Fruits de mer">
+          </div>
+          <div class="hero-img-card">
+            <img src="https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=420&h=300&fit=crop&q=90" alt="Gastronomie">
+          </div>
+          <div class="hero-img-card">
+            <img src="https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=420&h=300&fit=crop&q=90" alt="Pizza">
+          </div>
+          <div class="hero-img-card">
+            <img src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=420&h=300&fit=crop&q=90" alt="Café">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ CATÉGORIES ═══════════════════════════════════════════════ -->
+<section class="py-5" style="background:white;">
+  <div class="container">
+    <div class="row align-items-center mb-4">
+      <div class="col">
+        <div class="section-eyebrow">Explorer</div>
+        <h2 class="section-title">Par type de restaurant</h2>
+        <div class="divider-pill"></div>
+      </div>
+      <div class="col-auto d-none d-md-block">
+        <a href="{% url 'liste_restaurants' %}" class="btn-outline-red">Voir tous <i class="bi bi-arrow-right ms-1"></i></a>
+      </div>
+    </div>
+
+    {% if categories %}
+    <div class="cat-grid">
+      {% for cat in categories %}
+      <a href="{% url 'liste_restaurants' %}?categorie={{ cat.slug }}" class="cat-chip">
+        <i class="bi {{ cat.icone }} cat-icon"></i>
+        <span class="cat-name">{{ cat.nom }}</span>
+        {% if cat.nb %}<span style="font-size:.68rem;color:#94a3b8;position:relative;z-index:1;margin-top:2px;">{{ cat.nb }} resto</span>{% endif %}
+      </a>
+      {% endfor %}
+      <a href="{% url 'liste_restaurants' %}" class="cat-chip">
+        <i class="bi bi-grid cat-icon"></i>
+        <span class="cat-name">Tout voir</span>
+      </a>
+    </div>
+    {% endif %}
+  </div>
+</section>
+
+<!-- ═══ COUPS DE COEUR (GLASS CARDS) ═══════════════════════════ -->
+{% if restaurants_vedettes %}
+<section class="section-dark py-5" style="padding-top:4rem;padding-bottom:4rem;">
+  <div class="container">
+    <div class="d-flex justify-content-between align-items-start mb-5">
+      <div>
+        <div class="section-eyebrow">Sélection</div>
+        <h2 class="section-title" style="color:white;">Coups de cœur</h2>
+        <p class="section-subtitle">Les adresses incontournables de Djibouti</p>
+      </div>
+      <a href="{% url 'liste_restaurants' %}" class="btn-ghost d-none d-md-flex">Voir tous <i class="bi bi-arrow-right ms-1"></i></a>
+    </div>
+
+    <div class="row g-4">
+      {% for r in restaurants_vedettes %}
+      <div class="col-md-6 col-lg-4">
+        <div class="position-relative">
+          <a href="{% url 'detail_restaurant' r.slug %}" class="glass-card">
+            <div class="glass-card-bg" style="background-image:url('{% if r.get_image %}{{ r.get_image }}{% else %}https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&h=400&fit=crop{% endif %}');"></div>
+            <div class="glass-card-overlay"></div>
+            <div class="glass-card-badges">
+              <span class="badge-status {% if r.est_ouvert %}badge-open{% else %}badge-closed{% endif %}">{% if r.est_ouvert %}● Ouvert{% else %}● Fermé{% endif %}</span>
+              <span class="badge-vedette-tag">À la une</span>
+            </div>
+            <span class="badge-gamme">{{ r.gamme_prix }}</span>
+            <div class="glass-card-body">
+              <div class="glass-card-cat">{% if r.categorie %}<i class="bi {{ r.categorie.icone }} me-1"></i>{{ r.categorie.nom }}{% endif %}</div>
+              <div class="glass-card-name">{{ r.nom }}</div>
+              <div class="glass-card-footer">
+                <div class="glass-card-rating">
+                  <span class="star">★</span>
+                  <span>{{ r.note_moyenne }}</span>
+                  <span style="color:rgba(255,255,255,0.45);font-size:.75rem;margin-left:4px;">({{ r.nombre_avis }} avis)</span>
+                </div>
+                <span style="font-size:.78rem;color:rgba(255,255,255,0.5);"><i class="bi bi-geo-alt me-1"></i>{{ r.adresse|truncatechars:22 }}</span>
+              </div>
+            </div>
+          </a>
+          {% if user.is_authenticated %}
+          <a href="{% url 'toggle_favori' r.slug %}" class="btn-favori-glass btn-favori-ajax {% if r.id in favoris_ids %}actif{% endif %}" data-url="{% url 'toggle_favori' r.slug %}">
+            <i class="bi {% if r.id in favoris_ids %}bi-heart-fill{% else %}bi-heart{% endif %}"></i>
+          </a>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<!-- ═══ BANDE STATS ═══════════════════════════════════════════════ -->
+<section style="background:linear-gradient(135deg,var(--primary),var(--accent));padding:3rem 0;">
+  <div class="container">
+    <div class="row g-4 text-center text-white">
+      <div class="col-6 col-md-3">
+        <div style="font-family:var(--font-title);font-size:2.6rem;font-weight:700;line-height:1;">20</div>
+        <div style="font-size:.8rem;opacity:.75;text-transform:uppercase;letter-spacing:.08em;font-weight:600;">Restaurants</div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div style="font-family:var(--font-title);font-size:2.6rem;font-weight:700;line-height:1;">215+</div>
+        <div style="font-size:.8rem;opacity:.75;text-transform:uppercase;letter-spacing:.08em;font-weight:600;">Plats au menu</div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div style="font-family:var(--font-title);font-size:2.6rem;font-weight:700;line-height:1;">12</div>
+        <div style="font-size:.8rem;opacity:.75;text-transform:uppercase;letter-spacing:.08em;font-weight:600;">Catégories</div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div style="font-family:var(--font-title);font-size:2.6rem;font-weight:700;line-height:1;">100%</div>
+        <div style="font-size:.8rem;opacity:.75;text-transform:uppercase;letter-spacing:.08em;font-weight:600;">Local 🇩🇯</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ TOP NOTÉS ════════════════════════════════════════════════ -->
+{% if top_restaurants %}
+<section class="py-5" style="background:white;">
+  <div class="container">
+    <div class="d-flex justify-content-between align-items-start mb-4">
+      <div>
+        <div class="section-eyebrow">Communauté</div>
+        <h2 class="section-title">Mieux notés</h2>
+        <p class="section-subtitle">Les préférés de la communauté DjibReco</p>
+      </div>
+      <a href="{% url 'liste_restaurants' %}?tri=-note_avg" class="btn-outline-red d-none d-md-flex">Voir tous</a>
+    </div>
+    <div class="row g-4">
+      {% for r in top_restaurants %}
+      <div class="col-sm-6 col-lg-4">
+        <div class="position-relative">
+          <a href="{% url 'detail_restaurant' r.slug %}" class="rest-card">
+            <div class="rest-card-img">
+              {% if r.get_image %}<img src="{{ r.get_image }}" alt="{{ r.nom }}" loading="lazy">
+              {% else %}<div class="rest-card-img-placeholder">{% if r.categorie %}<i class="bi {{ r.categorie.icone }}"></i>{% endif %}</div>{% endif %}
+              <span class="badge-status {% if r.est_ouvert %}badge-open{% else %}badge-closed{% endif %}">{% if r.est_ouvert %}● Ouvert{% else %}● Fermé{% endif %}</span>
+              <span class="badge-gamme">{{ r.gamme_prix }}</span>
+              <span style="position:absolute;bottom:12px;left:12px;background:{% if forloop.counter == 1 %}linear-gradient(135deg,#ffd166,#ff8c42){% elif forloop.counter == 2 %}linear-gradient(135deg,#94a3b8,#cbd5e1){% elif forloop.counter == 3 %}linear-gradient(135deg,#cd7f32,#a0522d){% else %}rgba(0,0,0,0.6){% endif %};color:white;font-size:.7rem;font-weight:900;padding:3px 10px;border-radius:50px;z-index:2;">#{{ forloop.counter }}</span>
+            </div>
+            <div class="rest-card-body">
+              <div class="rest-card-cat">{% if r.categorie %}<i class="bi {{ r.categorie.icone }} me-1"></i>{{ r.categorie.nom }}{% endif %}</div>
+              <div class="rest-card-name">{{ r.nom }}</div>
+              <div class="rest-card-addr"><i class="bi bi-geo-alt me-1"></i>{{ r.adresse }}</div>
+              <div class="rest-card-footer">
+                <div class="rating-pill"><span class="star">★</span>{{ r.note_avg|default:"—" }}</div>
+                <span class="avis-count"><i class="bi bi-chat me-1"></i>{{ r.nb_avis }} avis</span>
+              </div>
+            </div>
+          </a>
+          {% if user.is_authenticated %}
+          <a href="{% url 'toggle_favori' r.slug %}" class="btn-favori-card btn-favori-ajax {% if r.id in favoris_ids %}actif{% endif %}" data-url="{% url 'toggle_favori' r.slug %}">
+            <i class="bi {% if r.id in favoris_ids %}bi-heart-fill{% else %}bi-heart{% endif %}"></i>
+          </a>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<!-- ═══ RÉCENTS ══════════════════════════════════════════════════ -->
+<section class="py-5" style="background:#f0f4ff;">
+  <div class="container">
+    <div class="d-flex justify-content-between align-items-start mb-4">
+      <div>
+        <div class="section-eyebrow">Nouveautés</div>
+        <h2 class="section-title">Derniers ajouts</h2>
+        <p class="section-subtitle">Les restaurants récemment ajoutés</p>
+      </div>
+      <a href="{% url 'liste_restaurants' %}" class="btn-outline-red d-none d-md-flex">Voir tous</a>
+    </div>
+    {% if restaurants_recents %}
+    <div class="row g-4">
+      {% for r in restaurants_recents %}
+      <div class="col-sm-6 col-lg-3">
+        <div class="position-relative">
+          <a href="{% url 'detail_restaurant' r.slug %}" class="rest-card">
+            <div class="rest-card-img">
+              {% if r.get_image %}<img src="{{ r.get_image }}" alt="{{ r.nom }}" loading="lazy">
+              {% else %}<div class="rest-card-img-placeholder">{% if r.categorie %}<i class="bi {{ r.categorie.icone }}"></i>{% endif %}</div>{% endif %}
+              <span class="badge-status {% if r.est_ouvert %}badge-open{% else %}badge-closed{% endif %}">{% if r.est_ouvert %}● Ouvert{% else %}● Fermé{% endif %}</span>
+              <span class="badge-gamme">{{ r.gamme_prix }}</span>
+            </div>
+            <div class="rest-card-body">
+              <div class="rest-card-cat">{% if r.categorie %}<i class="bi {{ r.categorie.icone }} me-1"></i>{{ r.categorie.nom }}{% endif %}</div>
+              <div class="rest-card-name">{{ r.nom }}</div>
+              <div class="rest-card-addr"><i class="bi bi-geo-alt me-1"></i>{{ r.adresse }}</div>
+              <div class="rest-card-footer">
+                <div class="rating-pill"><span class="star">★</span>{{ r.note_avg|default:"Nouveau" }}</div>
+              </div>
+            </div>
+          </a>
+          {% if user.is_authenticated %}
+          <a href="{% url 'toggle_favori' r.slug %}" class="btn-favori-card btn-favori-ajax {% if r.id in favoris_ids %}actif{% endif %}" data-url="{% url 'toggle_favori' r.slug %}">
+            <i class="bi {% if r.id in favoris_ids %}bi-heart-fill{% else %}bi-heart{% endif %}"></i>
+          </a>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+</section>
+
+<!-- ═══ CTA ══════════════════════════════════════════════════════ -->
+<section class="cta-section">
+  <div class="container">
+    <div class="section-eyebrow" style="justify-content:center;margin-bottom:1.2rem;color:var(--gold);">Rejoignez la communauté</div>
+    <h2>Vous connaissez<br>une bonne adresse ?</h2>
+    <p style="color:rgba(255,255,255,0.5);font-size:1.05rem;margin-bottom:3rem;max-width:500px;margin-left:auto;margin-right:auto;line-height:1.75;margin-top:1rem;">
+      Partagez vos restaurants favoris, laissez vos avis et aidez toute la communauté à découvrir les saveurs de Djibouti.
+    </p>
+    <div class="d-flex gap-3 justify-content-center flex-wrap">
+      {% if user.is_authenticated %}
+        {% if user.is_staff %}
+        <a href="{% url 'ajouter_restaurant' %}" class="btn-primary-grad" style="font-size:1rem;padding:.9rem 2.3rem;"><i class="bi bi-plus-circle me-2"></i>Ajouter un restaurant</a>
+        {% endif %}
+        <a href="{% url 'dashboard_utilisateur' %}" class="btn-ghost"><i class="bi bi-layout-dashboard me-2"></i>Mon espace</a>
+      {% else %}
+        <a href="{% url 'inscription' %}" class="btn-primary-grad" style="font-size:1rem;padding:.9rem 2.4rem;"><i class="bi bi-person-plus me-2"></i>Rejoindre DjibReco</a>
+        <a href="{% url 'connexion' %}" class="btn-ghost">Se connecter</a>
+      {% endif %}
+    </div>
+    <div class="d-flex justify-content-center gap-3 flex-wrap mt-4">
+      <span style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.5);padding:6px 14px;border-radius:50px;font-size:.76rem;font-weight:600;"><i class="bi bi-star me-1" style="color:var(--gold);"></i>Notez vos restaurants</span>
+      <span style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.5);padding:6px 14px;border-radius:50px;font-size:.76rem;font-weight:600;"><i class="bi bi-heart me-1" style="color:var(--primary);"></i>Sauvez vos favoris</span>
+      <span style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.5);padding:6px 14px;border-radius:50px;font-size:.76rem;font-weight:600;"><i class="bi bi-magic me-1" style="color:var(--teal);"></i>Recommandations perso</span>
+    </div>
+  </div>
+</section>
+
+{% endblock %}

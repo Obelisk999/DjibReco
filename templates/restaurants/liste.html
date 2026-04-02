@@ -1,0 +1,124 @@
+{% extends 'base.html' %}
+{% block title %}Restaurants — DjibReco{% endblock %}
+{% block content %}
+
+<!-- Header -->
+<div style="background:linear-gradient(135deg,var(--dark),#1a1a2e);padding:3rem 0;color:white;">
+  <div class="container">
+    <div class="section-eyebrow" style="color:var(--gold);">Explorer</div>
+    <h1 class="section-title" style="color:white;">Tous les restaurants</h1>
+    <p style="color:rgba(255,255,255,0.5);">{{ total }} établissement{{ total|pluralize }} à Djibouti</p>
+  </div>
+</div>
+
+<div class="container py-5">
+
+  <!-- Filter bar -->
+  <div class="filter-bar mb-4">
+    <form method="get" class="row g-3 align-items-end">
+      <div class="col-md-4">
+        <label class="form-label">Rechercher</label>
+        <div class="input-group">
+          <span class="input-group-text border-end-0" style="border-radius:var(--radius-sm) 0 0 var(--radius-sm);border-right:none !important;"><i class="bi bi-search"></i></span>
+          <input type="text" name="q" class="form-control border-start-0" style="border-left:none !important;" placeholder="Nom, quartier, cuisine..." value="{{ recherche }}">
+        </div>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Catégorie</label>
+        <select name="categorie" class="form-select">
+          <option value="">Toutes les catégories</option>
+          {% for cat in categories %}
+          <option value="{{ cat.slug }}" {% if categorie_active == cat.slug %}selected{% endif %}>{{ cat.nom }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Trier par</label>
+        <select name="tri" class="form-select">
+          <option value="-date_creation" {% if tri == '-date_creation' %}selected{% endif %}>Plus récents</option>
+          <option value="nom" {% if tri == 'nom' %}selected{% endif %}>Nom A-Z</option>
+          <option value="-note_avg" {% if tri == '-note_avg' %}selected{% endif %}>Mieux notés</option>
+          <option value="-nb_avis" {% if tri == '-nb_avis' %}selected{% endif %}>Plus commentés</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <button type="submit" class="btn-primary-grad w-100" style="justify-content:center;border-radius:var(--radius-sm);">
+          <i class="bi bi-funnel me-1"></i>Filtrer
+        </button>
+      </div>
+    </form>
+
+    <!-- Budget filter -->
+    <div class="mt-3 pt-3 d-flex align-items-center gap-3 flex-wrap" style="border-top:1px solid rgba(255,255,255,0.07);">
+      <span style="font-size:.78rem;font-weight:700;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:.06em;">Budget :</span>
+      <a href="?{% if budget != '$' %}budget=${% endif %}{% if recherche %}&q={{ recherche }}{% endif %}{% if categorie_active %}&categorie={{ categorie_active }}{% endif %}&tri={{ tri }}" class="budget-btn {% if budget == '$' %}active{% endif %}">$ Économique</a>
+      <a href="?{% if budget != '$$' %}budget=$${% endif %}{% if recherche %}&q={{ recherche }}{% endif %}{% if categorie_active %}&categorie={{ categorie_active }}{% endif %}&tri={{ tri }}" class="budget-btn {% if budget == '$$' %}active{% endif %}">&dollar;&dollar; Modéré</a>
+      <a href="?{% if budget != '$$$' %}budget=$$${% endif %}{% if recherche %}&q={{ recherche }}{% endif %}{% if categorie_active %}&categorie={{ categorie_active }}{% endif %}&tri={{ tri }}" class="budget-btn {% if budget == '$$$' %}active{% endif %}">$$$ Haut de gamme</a>
+      {% if budget or recherche or categorie_active %}
+      <a href="{% url 'liste_restaurants' %}" style="font-size:.82rem;color:var(--primary);text-decoration:none;font-weight:600;margin-left:auto;"><i class="bi bi-x-circle me-1"></i>Effacer tout</a>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Category quick pills -->
+  <div class="d-flex flex-wrap gap-2 mb-4">
+    <a href="{% url 'liste_restaurants' %}{% if recherche %}?q={{ recherche }}{% endif %}" class="cat-pill {% if not categorie_active %}active{% endif %}">Tous</a>
+    {% for cat in categories %}
+    <a href="?categorie={{ cat.slug }}{% if recherche %}&q={{ recherche }}{% endif %}" class="cat-pill {% if categorie_active == cat.slug %}active{% endif %}">
+      <i class="bi {{ cat.icone }} me-1"></i>{{ cat.nom }}
+    </a>
+    {% endfor %}
+  </div>
+
+  <!-- Results -->
+  {% if recherche %}
+  <p class="text-muted mb-4" style="font-size:.9rem;">
+    <i class="bi bi-search me-1"></i>
+    <strong>{{ total }}</strong> résultat{{ total|pluralize }} pour "<strong>{{ recherche }}</strong>"
+  </p>
+  {% endif %}
+
+  {% if restaurants %}
+  <div class="row g-4">
+    {% for r in restaurants %}
+    <div class="col-sm-6 col-lg-4 col-xl-3">
+      <div class="position-relative h-100">
+        <a href="{% url 'detail_restaurant' r.slug %}" class="rest-card">
+          <div class="rest-card-img">
+            {% if r.get_image %}<img src="{{ r.get_image }}" alt="{{ r.nom }}" loading="lazy">
+            {% else %}<div class="rest-card-img-placeholder">{% if r.categorie %}<i class="bi {{ r.categorie.icone }}"></i>{% else %}🍽️{% endif %}</div>{% endif %}
+            <span class="badge-status {% if r.est_ouvert %}badge-open{% else %}badge-closed{% endif %}">{% if r.est_ouvert %}● Ouvert{% else %}● Fermé{% endif %}</span>
+            <span class="badge-gamme">{{ r.gamme_prix }}</span>
+            {% if r.est_vedette %}<span class="badge-vedette-tag">⭐ Vedette</span>{% endif %}
+          </div>
+          <div class="rest-card-body">
+            <div class="rest-card-cat">{% if r.categorie %}<i class="bi {{ r.categorie.icone }} me-1"></i>{{ r.categorie.nom }}{% endif %}</div>
+            <div class="rest-card-name">{{ r.nom }}</div>
+            <div class="rest-card-addr"><i class="bi bi-geo-alt me-1"></i>{{ r.adresse }}</div>
+            <div class="rest-card-footer">
+              <div class="rating-pill"><span class="star">★</span>{{ r.note_moyenne }}</div>
+              <span class="avis-count"><i class="bi bi-chat me-1"></i>{{ r.nombre_avis }}</span>
+            </div>
+          </div>
+        </a>
+        {% if user.is_authenticated %}
+        <a href="{% url 'toggle_favori' r.slug %}" class="btn-favori-card btn-favori-ajax {% if r.id in favoris_ids %}actif{% endif %}" data-url="{% url 'toggle_favori' r.slug %}">
+          <i class="bi {% if r.id in favoris_ids %}bi-heart-fill{% else %}bi-heart{% endif %}"></i>
+        </a>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <span class="empty-icon">🔍</span>
+    <h4>Aucun restaurant trouvé</h4>
+    <p>Essayez d'autres critères ou effacez les filtres.</p>
+    <div class="d-flex gap-3 justify-content-center mt-3">
+      <a href="{% url 'liste_restaurants' %}" class="btn-outline-red">Réinitialiser</a>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

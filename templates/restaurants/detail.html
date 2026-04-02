@@ -1,0 +1,329 @@
+{% extends 'base.html' %}
+{% block title %}{{ restaurant.nom }} — DjibReco{% endblock %}
+{% block content %}
+
+<!-- ── Hero ── -->
+<div class="detail-hero">
+  {% if restaurant.get_image %}
+  <div class="detail-hero-img" style="background-image:url('{{ restaurant.get_image }}');"></div>
+  {% else %}
+  <div class="detail-hero-img" style="background:linear-gradient(135deg,var(--dark),#2d1b69);"></div>
+  {% endif %}
+  <div class="detail-hero-overlay"></div>
+  <div class="detail-hero-content">
+    <!-- Breadcrumb -->
+    <nav style="font-size:.8rem;color:rgba(255,255,255,0.5);margin-bottom:.8rem;">
+      <a href="{% url 'accueil' %}" style="color:rgba(255,255,255,0.5);text-decoration:none;">Accueil</a>
+      <span class="mx-2">/</span>
+      <a href="{% url 'liste_restaurants' %}" style="color:rgba(255,255,255,0.5);text-decoration:none;">Restaurants</a>
+      <span class="mx-2">/</span>
+      <span style="color:white;">{{ restaurant.nom }}</span>
+    </nav>
+    <div class="detail-tags mb-2">
+      {% if restaurant.categorie %}
+      <span class="detail-tag"><i class="bi {{ restaurant.categorie.icone }} me-1"></i>{{ restaurant.categorie.nom }}</span>
+      {% endif %}
+      <span class="detail-tag {% if restaurant.est_ouvert %}open{% else %}closed{% endif %}">
+        {% if restaurant.est_ouvert %}● Ouvert{% else %}● Fermé{% endif %}
+      </span>
+      <span class="detail-tag">{{ restaurant.gamme_prix }}</span>
+      {% if restaurant.est_vedette %}<span class="detail-tag" style="background:rgba(255,209,102,0.2);border-color:rgba(255,209,102,0.4);color:#ffd166;">⭐ À la une</span>{% endif %}
+    </div>
+    <h1>{{ restaurant.nom }}</h1>
+    <div class="d-flex align-items-center gap-3 flex-wrap mt-2">
+      <div style="display:flex;align-items:center;gap:4px;">
+        {% for i in restaurant.etoiles_plein %}<span style="color:#fbbf24;font-size:1.1rem;">★</span>{% endfor %}
+        {% for i in restaurant.etoiles_vide %}<span style="color:rgba(255,255,255,0.3);font-size:1.1rem;">★</span>{% endfor %}
+        <strong style="color:white;margin-left:6px;">{{ note_moyenne }}</strong>
+        <span style="color:rgba(255,255,255,0.5);font-size:.85rem;">({{ nombre_avis }} avis)</span>
+      </div>
+      <span style="color:rgba(255,255,255,0.5);font-size:.85rem;"><i class="bi bi-geo-alt me-1"></i>{{ restaurant.adresse }}</span>
+    </div>
+  </div>
+</div>
+
+<!-- ── Info bar ── -->
+<div class="container">
+  <div class="detail-infobar">
+    <div class="row g-3 align-items-center">
+      <div class="col-6 col-md-3">
+        <div class="info-chip">
+          <i class="bi bi-geo-alt-fill"></i>
+          <div><div class="label">Adresse</div><div class="value" style="font-size:.85rem;">{{ restaurant.adresse }}</div></div>
+        </div>
+      </div>
+      {% if restaurant.telephone %}
+      <div class="col-6 col-md-3">
+        <div class="info-chip">
+          <i class="bi bi-telephone-fill"></i>
+          <div><div class="label">Téléphone</div><div class="value"><a href="tel:{{ restaurant.telephone }}" style="color:inherit;text-decoration:none;">{{ restaurant.telephone }}</a></div></div>
+        </div>
+      </div>
+      {% endif %}
+      {% if restaurant.horaires %}
+      <div class="col-6 col-md-3">
+        <div class="info-chip">
+          <i class="bi bi-clock-fill"></i>
+          <div><div class="label">Horaires</div><div class="value" style="font-size:.85rem;">{{ restaurant.horaires }}</div></div>
+        </div>
+      </div>
+      {% endif %}
+      <div class="col-6 col-md-3 text-md-end">
+        <div class="d-flex gap-2 justify-content-end align-items-center">
+          {% if user.is_authenticated %}
+          <a href="{% url 'toggle_favori' restaurant.slug %}" class="btn-favori-ajax {% if est_favori %}actif{% endif %}" data-url="{% url 'toggle_favori' restaurant.slug %}"
+             style="display:inline-flex;align-items:center;gap:.5rem;padding:.5rem 1rem;border-radius:50px;background:{% if est_favori %}var(--primary){% else %}#f1f5f9{% endif %};color:{% if est_favori %}white{% else %}#64748b{% endif %};font-size:.85rem;font-weight:700;text-decoration:none;transition:all .3s;border:2px solid {% if est_favori %}var(--primary){% else %}#e2e8f0{% endif %};">
+            <i class="bi {% if est_favori %}bi-heart-fill{% else %}bi-heart{% endif %}"></i>
+            {% if est_favori %}Favori{% else %}Ajouter{% endif %}
+          </a>
+          {% endif %}
+          {% if user.is_staff %}
+          <a href="{% url 'modifier_restaurant' restaurant.slug %}" class="btn-outline-red" style="padding:.5rem 1rem;font-size:.85rem;">
+            <i class="bi bi-pencil me-1"></i>Modifier
+          </a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Main content ── -->
+<div class="container py-4">
+  <div class="row g-4">
+
+    <!-- Left: description + menu + reviews -->
+    <div class="col-lg-8">
+
+      <!-- Description -->
+      {% if restaurant.description %}
+      <div class="panel mb-4">
+        <div class="panel-title"><i class="bi bi-info-circle" style="color:var(--blue);"></i>À propos</div>
+        <p style="color:#64748b;line-height:1.8;font-size:.95rem;">{{ restaurant.description }}</p>
+      </div>
+      {% endif %}
+
+      <!-- Menu -->
+      <div class="panel mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <div class="panel-title mb-0"><i class="bi bi-card-list" style="color:var(--accent);"></i>Menu</div>
+          {% if user.is_staff %}
+          <a href="{% url 'ajouter_menu_item' restaurant.slug %}" class="btn-primary-grad" style="padding:.4rem 1.1rem;font-size:.82rem;">
+            <i class="bi bi-plus-lg me-1"></i>Ajouter
+          </a>
+          {% endif %}
+        </div>
+
+        {% if not plats and not boissons and not cafes %}
+        <div class="empty-state" style="padding:2rem;"><span class="empty-icon" style="font-size:2.5rem;">📋</span><p>Aucun item pour le moment.</p></div>
+        {% else %}
+
+        <!-- Tab nav -->
+        <div class="menu-nav">
+          {% if plats %}<button class="menu-tab-btn active" data-tab="plats">🍽️ Plats <span class="badge bg-light text-dark ms-1" style="font-size:.7rem;">{{ plats.count }}</span></button>{% endif %}
+          {% if boissons %}<button class="menu-tab-btn {% if not plats %}active{% endif %}" data-tab="boissons">🥤 Boissons <span class="badge bg-light text-dark ms-1" style="font-size:.7rem;">{{ boissons.count }}</span></button>{% endif %}
+          {% if cafes %}<button class="menu-tab-btn {% if not plats and not boissons %}active{% endif %}" data-tab="cafes">☕ Cafés <span class="badge bg-light text-dark ms-1" style="font-size:.7rem;">{{ cafes.count }}</span></button>{% endif %}
+        </div>
+
+        {% if plats %}
+        <div class="menu-tab-content active" id="tab-plats">
+          {% for item in plats %}
+          <div class="menu-item-card">
+            {% if item.get_image %}<img src="{{ item.get_image }}" alt="{{ item.nom }}" class="menu-item-img">
+            {% else %}<div class="menu-item-placeholder">🍽️</div>{% endif %}
+            <div class="menu-item-info">
+              <div class="menu-item-name">{{ item.nom }}</div>
+              {% if item.description %}<div class="menu-item-desc">{{ item.description }}</div>{% endif %}
+            </div>
+            <div class="d-flex flex-column align-items-end gap-1">
+              <div class="menu-item-price">{{ item.prix }} FDJ</div>
+              {% if user.is_staff %}
+              <a href="{% url 'supprimer_menu_item' item.id %}" onclick="return confirm('Supprimer ?')" style="font-size:.72rem;color:#f87171;text-decoration:none;">Suppr.</a>
+              {% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if boissons %}
+        <div class="menu-tab-content {% if not plats %}active{% endif %}" id="tab-boissons">
+          {% for item in boissons %}
+          <div class="menu-item-card">
+            {% if item.get_image %}<img src="{{ item.get_image }}" alt="{{ item.nom }}" class="menu-item-img">
+            {% else %}<div class="menu-item-placeholder">🥤</div>{% endif %}
+            <div class="menu-item-info">
+              <div class="menu-item-name">{{ item.nom }}</div>
+              {% if item.description %}<div class="menu-item-desc">{{ item.description }}</div>{% endif %}
+            </div>
+            <div class="menu-item-price">{{ item.prix }} FDJ</div>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if cafes %}
+        <div class="menu-tab-content {% if not plats and not boissons %}active{% endif %}" id="tab-cafes">
+          {% for item in cafes %}
+          <div class="menu-item-card">
+            {% if item.get_image %}<img src="{{ item.get_image }}" alt="{{ item.nom }}" class="menu-item-img">
+            {% else %}<div class="menu-item-placeholder">☕</div>{% endif %}
+            <div class="menu-item-info">
+              <div class="menu-item-name">{{ item.nom }}</div>
+              {% if item.description %}<div class="menu-item-desc">{{ item.description }}</div>{% endif %}
+            </div>
+            <div class="menu-item-price">{{ item.prix }} FDJ</div>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+        {% endif %}
+      </div>
+
+      <!-- Reviews -->
+      <div class="panel">
+        <div class="panel-title"><i class="bi bi-chat-square-heart" style="color:#ec4899;"></i>Avis ({{ nombre_avis }})</div>
+
+        <!-- Add review form -->
+        {% if user.is_authenticated and not utilisateur_a_deja_note %}
+        <div style="background:#f8faff;border-radius:var(--radius-sm);padding:1.5rem;margin-bottom:1.5rem;border:1px solid #e2e8f0;">
+          <h6 style="font-weight:800;margin-bottom:1rem;color:var(--dark2);">Laissez votre avis</h6>
+          <form method="post">
+            {% csrf_token %}
+            <div class="mb-3">
+              <label class="form-label" style="color:var(--dark2);">Note *</label>
+              <div class="star-rating-wrap">
+                {% for v in "54321" %}
+                <input type="radio" name="note_display" id="star{{ v }}" value="{{ v }}">
+                <label for="star{{ v }}">★</label>
+                {% endfor %}
+              </div>
+              <input type="hidden" name="note" id="id_note" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label" style="color:var(--dark2);">Commentaire</label>
+              <textarea name="commentaire" class="form-control form-light" rows="3" placeholder="Partagez votre expérience..."></textarea>
+            </div>
+            <button type="submit" class="btn-primary-grad"><i class="bi bi-send me-2"></i>Publier mon avis</button>
+          </form>
+        </div>
+        {% elif not user.is_authenticated %}
+        <div class="alert alert-info mb-4">
+          <i class="bi bi-info-circle me-2"></i>
+          <a href="{% url 'connexion' %}?next={{ request.path }}" style="font-weight:700;color:inherit;">Connectez-vous</a> pour laisser un avis.
+        </div>
+        {% elif utilisateur_a_deja_note %}
+        <div class="alert alert-success mb-4"><i class="bi bi-check-circle me-2"></i>Vous avez déjà noté ce restaurant.</div>
+        {% endif %}
+
+        <!-- Review list -->
+        {% if avis_liste %}
+          {% for avis in avis_liste %}
+          <div class="avis-card">
+            <div class="d-flex align-items-start gap-3">
+              <div class="avis-avatar">{{ avis.utilisateur.username|first|upper }}</div>
+              <div class="flex-grow-1">
+                <div class="d-flex justify-content-between align-items-start">
+                  <div>
+                    <strong style="color:var(--dark2);font-size:.92rem;">{{ avis.utilisateur.first_name|default:avis.utilisateur.username }}</strong>
+                    <div style="font-size:.75rem;color:#94a3b8;">{{ avis.date_creation|date:"d/m/Y" }}</div>
+                  </div>
+                  <div class="d-flex align-items-center gap-2">
+                    <div class="stars-display">
+                      {% for i in "12345" %}
+                        {% if forloop.counter <= avis.note %}<span class="s-fill">★</span>
+                        {% else %}<span class="s-empty">★</span>{% endif %}
+                      {% endfor %}
+                    </div>
+                    {% if user == avis.utilisateur or user.is_staff %}
+                    <form method="post" action="{% url 'supprimer_avis' avis.id %}" style="display:inline;">
+                      {% csrf_token %}
+                      <button type="submit" onclick="return confirm('Supprimer cet avis ?')" style="background:none;border:none;color:#f87171;cursor:pointer;font-size:.8rem;padding:2px;">
+                        <i class="bi bi-trash"></i>
+                      </button>
+                    </form>
+                    {% endif %}
+                  </div>
+                </div>
+                {% if avis.commentaire %}
+                <p style="margin-top:.5rem;color:#64748b;font-size:.88rem;line-height:1.7;">{{ avis.commentaire }}</p>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+        <div class="empty-state" style="padding:2rem;"><span class="empty-icon" style="font-size:2.5rem;">💬</span><p>Soyez le premier à laisser un avis !</p></div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Right sidebar -->
+    <div class="col-lg-4">
+
+      <!-- Rating summary -->
+      <div class="panel mb-3 text-center">
+        <div style="font-size:4rem;font-weight:900;color:var(--dark2);line-height:1;letter-spacing:-2px;">{{ note_moyenne }}</div>
+        <div class="my-2">
+          {% for i in restaurant.etoiles_plein %}<span style="color:#fbbf24;font-size:1.4rem;">★</span>{% endfor %}
+          {% for i in restaurant.etoiles_vide %}<span style="color:#e2e8f0;font-size:1.4rem;">★</span>{% endfor %}
+        </div>
+        <div style="color:#94a3b8;font-size:.85rem;">{{ nombre_avis }} avis de la communauté</div>
+      </div>
+
+      <!-- Infos -->
+      <div class="panel mb-3">
+        <div class="panel-title"><i class="bi bi-info-circle" style="color:var(--blue);"></i>Infos pratiques</div>
+        <ul class="list-unstyled mb-0">
+          <li class="mb-2 d-flex gap-2" style="font-size:.88rem;"><i class="bi bi-geo-alt" style="color:var(--primary);margin-top:2px;"></i><span style="color:#64748b;">{{ restaurant.adresse }}</span></li>
+          {% if restaurant.telephone %}<li class="mb-2 d-flex gap-2" style="font-size:.88rem;"><i class="bi bi-telephone" style="color:var(--teal);"></i><a href="tel:{{ restaurant.telephone }}" style="color:#64748b;text-decoration:none;">{{ restaurant.telephone }}</a></li>{% endif %}
+          {% if restaurant.horaires %}<li class="mb-2 d-flex gap-2" style="font-size:.88rem;"><i class="bi bi-clock" style="color:var(--accent);"></i><span style="color:#64748b;">{{ restaurant.horaires }}</span></li>{% endif %}
+          {% if restaurant.site_web %}<li class="mb-2 d-flex gap-2" style="font-size:.88rem;"><i class="bi bi-globe" style="color:var(--blue);"></i><a href="{{ restaurant.site_web }}" target="_blank" style="color:var(--blue);">Visiter le site</a></li>{% endif %}
+          <li class="d-flex gap-2" style="font-size:.88rem;">
+            <i class="bi bi-currency-exchange" style="color:var(--gold);"></i>
+            <span style="color:#64748b;">{{ restaurant.get_gamme_prix_display }}</span>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Similaires -->
+      {% if similaires %}
+      <div class="panel">
+        <div class="panel-title"><i class="bi bi-grid" style="color:var(--primary);"></i>Similaires</div>
+        {% for s in similaires %}
+        <a href="{% url 'detail_restaurant' s.slug %}" class="mini-rest-row">
+          {% if s.get_image %}<img src="{{ s.get_image }}" class="mini-rest-img" alt="{{ s.nom }}">
+          {% else %}<div class="mini-rest-placeholder">🍽️</div>{% endif %}
+          <div>
+            <div class="mini-rest-name">{{ s.nom }}</div>
+            <div class="mini-rest-meta">★ {{ s.note_avg|default:"—" }} · {{ s.adresse|truncatechars:28 }}</div>
+          </div>
+        </a>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Star rating logic for detail page
+(function() {
+  const hiddenInput = document.getElementById('id_note');
+  if (!hiddenInput) return;
+  const radioInputs = document.querySelectorAll('.star-rating-wrap input[type=radio]');
+  const labels = document.querySelectorAll('.star-rating-wrap label');
+  labels.forEach(lbl => {
+    lbl.addEventListener('click', function() {
+      const inputId = this.getAttribute('for');
+      const val = inputId ? inputId.replace('star', '') : null;
+      if (val) hiddenInput.value = val;
+    });
+  });
+})();
+</script>
+{% endblock %}

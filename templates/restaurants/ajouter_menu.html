@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+{% block title %}Ajouter au menu — {{ restaurant.nom }}{% endblock %}
+{% block content %}
+
+<div style="background:linear-gradient(135deg,var(--dark),#1a1a2e);padding:2.5rem 0;color:white;">
+  <div class="container">
+    <div class="section-eyebrow" style="color:var(--gold);">Menu</div>
+    <h1 style="font-size:1.8rem;font-weight:900;">Ajouter un item au menu</h1>
+    <p style="color:rgba(255,255,255,0.5);margin:0;">{{ restaurant.nom }}</p>
+  </div>
+</div>
+
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-lg-6">
+      <div class="panel form-light">
+        <form method="post" enctype="multipart/form-data">
+          {% csrf_token %}
+          <div class="row g-3">
+            <div class="col-12"><label class="form-label">Nom *</label>{{ form.nom }}</div>
+            <div class="col-12"><label class="form-label">Description</label>{{ form.description }}</div>
+            <div class="col-md-6"><label class="form-label">Prix (FDJ) *</label>{{ form.prix }}</div>
+            <div class="col-md-6"><label class="form-label">Catégorie *</label>{{ form.type_item }}</div>
+            <div class="col-12"><label class="form-label">URL image du plat</label>{{ form.cover_url }}</div>
+            <div class="col-12"><label class="form-label">Ou télécharger une photo</label>{{ form.image }}</div>
+            <div class="col-12 d-flex align-items-center gap-2">
+              {{ form.disponible }}
+              <label class="form-check-label" style="color:var(--dark2);font-weight:600;">Disponible maintenant</label>
+            </div>
+          </div>
+          <hr style="margin:1.5rem 0;">
+          <div class="d-flex gap-3">
+            <button type="submit" class="btn-primary-grad"><i class="bi bi-plus-lg me-2"></i>Ajouter au menu</button>
+            <a href="{% url 'detail_restaurant' restaurant.slug %}" class="btn-outline-red">Annuler</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

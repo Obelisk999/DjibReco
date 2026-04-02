@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+
+{% block title %}Recherche — DjibReco{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  <h1 class="section-title mb-1">🔍 Recherche</h1>
+  <p class="section-subtitle">Trouvez votre prochain restaurant favori</p>
+
+  <div class="card border-0 shadow-sm rounded-4 p-4 mb-4">
+    <form method="get">
+      <div class="d-flex gap-3">
+        <input type="text" name="q" class="form-control form-control-lg"
+               placeholder="Nom de restaurant, quartier, type de cuisine..."
+               value="{{ query }}" autofocus>
+        <button type="submit" class="btn-primary-custom" style="white-space:nowrap;">
+          <i class="bi bi-search me-1"></i>Rechercher
+        </button>
+      </div>
+    </form>
+  </div>
+
+  {% if query %}
+    <p class="text-muted mb-3">
+      <strong>{{ restaurants|length }}</strong> résultat{{ restaurants|length|pluralize }} pour
+      "<strong>{{ query }}</strong>"
+    </p>
+    {% if restaurants %}
+    <div class="row g-4">
+      {% for restaurant in restaurants %}
+      <div class="col-sm-6 col-lg-4">
+        <a href="{% url 'detail_restaurant' restaurant.slug %}" class="restaurant-card">
+          <div class="card-img-wrapper">
+            {% if restaurant.image %}
+              <img src="{{ restaurant.image.url }}" alt="{{ restaurant.nom }}">
+            {% else %}
+              <div class="card-img-placeholder">
+                {% if restaurant.categorie %}{{ restaurant.categorie.icone }}{% else %}🍽️{% endif %}
+              </div>
+            {% endif %}
+            <span class="badge-status {% if restaurant.est_ouvert %}badge-open{% else %}badge-closed{% endif %}">
+              {% if restaurant.est_ouvert %}● Ouvert{% else %}● Fermé{% endif %}
+            </span>
+          </div>
+          <div class="card-body">
+            <div class="card-category">
+              {% if restaurant.categorie %}{{ restaurant.categorie.icone }} {{ restaurant.categorie.nom }}{% endif %}
+            </div>
+            <div class="card-title">{{ restaurant.nom }}</div>
+            <div class="card-address"><i class="bi bi-geo-alt me-1"></i>{{ restaurant.adresse }}</div>
+            <div class="card-footer-info">
+              <span class="star-full">★</span>
+              <strong>{{ restaurant.note_moyenne }}</strong>
+              <span class="text-muted" style="font-size:0.8rem;">({{ restaurant.nombre_avis }} avis)</span>
+            </div>
+          </div>
+        </a>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <div class="empty-icon">😔</div>
+      <h4>Aucun résultat trouvé</h4>
+      <p>Essayez d'autres mots-clés ou <a href="{% url 'ajouter_restaurant' %}">ajoutez ce restaurant</a>.</p>
+    </div>
+    {% endif %}
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-icon">🔍</div>
+    <h4>Que cherchez-vous ?</h4>
+    <p>Entrez le nom d'un restaurant, d'un plat ou d'un quartier.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

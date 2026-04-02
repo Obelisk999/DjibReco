@@ -1,0 +1,311 @@
+{% extends 'base.html' %}
+{% block title %}Mon espace — DjibReco{% endblock %}
+
+{% block extra_css %}
+<style>
+  /* ── Override to dark ── */
+  body { background: var(--dark); }
+  :root { --card-bg: #0d1424; --card-border: rgba(255,255,255,.07); }
+
+  .flex-1 { flex: 1; min-width: 0; }
+
+  /* ── Dashboard page ── */
+  .dash-hero {
+    background: linear-gradient(135deg, var(--dark) 0%, #0d1424 60%, #120a1e 100%);
+    padding: 3rem 0 5rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .dash-hero::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse 80% 60% at 20% 50%, rgba(255,60,95,.07) 0%, transparent 70%),
+                radial-gradient(ellipse 60% 50% at 80% 30%, rgba(6,214,160,.05) 0%, transparent 70%);
+  }
+  .dash-hero-inner {
+    position: relative; z-index: 1;
+    display: flex; align-items: center; gap: 1.5rem;
+  }
+  .dash-avatar {
+    width: 72px; height: 72px; flex-shrink: 0;
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    border-radius: 20px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 800; font-size: 2rem; color: white;
+    box-shadow: 0 12px 40px rgba(255,60,95,.35);
+  }
+  .dash-welcome h1 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 1.9rem; font-weight: 700; letter-spacing: -.5px;
+    color: white; margin-bottom: .25rem;
+  }
+  .dash-welcome p { color: rgba(255,255,255,.42); font-size: .88rem; margin: 0; }
+
+  /* ── Stat cards ── */
+  .dash-stats {
+    margin-top: -2.5rem; position: relative; z-index: 10;
+  }
+  .stat-tile {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 20px;
+    padding: 1.4rem 1.2rem;
+    display: flex; flex-direction: column; align-items: flex-start;
+    gap: .5rem;
+    transition: transform .2s, box-shadow .2s;
+    height: 100%;
+  }
+  .stat-tile:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 16px 40px rgba(0,0,0,.35);
+  }
+  .stat-tile-icon {
+    width: 46px; height: 46px; border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.2rem; margin-bottom: .2rem;
+  }
+  .stat-tile-num {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 2.2rem; font-weight: 800; line-height: 1;
+    background: var(--tile-grad); -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent; background-clip: text;
+  }
+  .stat-tile-label {
+    font-size: .78rem; font-weight: 600;
+    color: rgba(255,255,255,.4); text-transform: uppercase; letter-spacing: .05em;
+  }
+
+  /* ── Panels ── */
+  .d-panel {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 20px;
+    padding: 1.6rem;
+  }
+  .d-panel-head {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 1.2rem;
+  }
+  .d-panel-title {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 1rem; font-weight: 700; color: white;
+    display: flex; align-items: center; gap: .5rem;
+  }
+  .d-panel-link {
+    font-size: .82rem; color: var(--primary);
+    text-decoration: none; font-weight: 600;
+  }
+  .d-panel-link:hover { text-decoration: underline; }
+
+  /* ── Reco cards ── */
+  .reco-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; }
+  .reco-card {
+    border-radius: 16px; overflow: hidden;
+    background: var(--dark3);
+    border: 1px solid rgba(255,255,255,.07);
+    transition: transform .2s, box-shadow .2s;
+    text-decoration: none; display: block; position: relative;
+  }
+  .reco-card:hover { transform: translateY(-4px); box-shadow: 0 16px 36px rgba(0,0,0,.4); }
+  .reco-card-img { height: 130px; overflow: hidden; position: relative; }
+  .reco-card-img img { width: 100%; height: 100%; object-fit: cover; transition: transform .6s; }
+  .reco-card:hover .reco-card-img img { transform: scale(1.07); }
+  .reco-card-placeholder { height: 130px; background: var(--dark3); display: flex; align-items: center; justify-content: center; font-size: 2rem; }
+  .reco-card-body { padding: .9rem; }
+  .reco-cat { font-size: .72rem; font-weight: 700; color: var(--primary); text-transform: uppercase; letter-spacing: .04em; margin-bottom: .25rem; }
+  .reco-name { font-size: .9rem; font-weight: 700; color: white; margin-bottom: .4rem; }
+  .reco-foot { display: flex; align-items: center; justify-content: space-between; }
+  .badge-open-sm { background: rgba(6,214,160,.15); color: var(--teal); font-size: .7rem; font-weight: 700; padding: 2px 8px; border-radius: 50px; }
+  .badge-closed-sm { background: rgba(248,113,113,.1); color: #f87171; font-size: .7rem; font-weight: 700; padding: 2px 8px; border-radius: 50px; }
+
+  /* ── Mini rows ── */
+  .mini-row {
+    display: flex; align-items: center; gap: .9rem;
+    padding: .75rem .5rem; border-radius: 14px;
+    text-decoration: none; color: inherit;
+    transition: background .15s;
+    border-bottom: 1px solid rgba(255,255,255,.04);
+  }
+  .mini-row:last-child { border-bottom: none; }
+  .mini-row:hover { background: rgba(255,255,255,.04); }
+  .mini-thumb { width: 50px; height: 50px; border-radius: 12px; object-fit: cover; flex-shrink: 0; }
+  .mini-placeholder { width: 50px; height: 50px; border-radius: 12px; background: var(--dark3); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; flex-shrink: 0; }
+  .mini-name { font-size: .9rem; font-weight: 700; color: white; margin-bottom: 2px; }
+  .mini-meta { font-size: .78rem; color: rgba(255,255,255,.38); }
+  .rating-sm { background: rgba(255,60,95,.12); color: var(--primary); font-size: .75rem; font-weight: 700; padding: 3px 9px; border-radius: 50px; white-space: nowrap; }
+
+  /* ── Review badge ── */
+  .review-badge {
+    width: 46px; height: 46px; border-radius: 14px;
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    display: flex; align-items: center; justify-content: center;
+    color: white; font-weight: 800; font-size: .9rem; flex-shrink: 0;
+  }
+
+  /* ── Empty state ── */
+  .d-empty {
+    padding: 2rem; text-align: center;
+    color: rgba(255,255,255,.3); font-size: .88rem; line-height: 1.6;
+  }
+  .d-empty-icon { font-size: 2.2rem; display: block; margin-bottom: .6rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Hero header -->
+<div class="dash-hero">
+  <div class="container">
+    <div class="dash-hero-inner">
+      <div class="dash-avatar">{{ user.username|first|upper }}</div>
+      <div class="dash-welcome">
+        <h1>Bonjour, {{ user.first_name|default:user.username }} 👋</h1>
+        <p>@{{ user.username }} &nbsp;·&nbsp; Membre depuis {{ user.date_joined|date:"F Y" }}</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- Stats tiles -->
+  <div class="dash-stats">
+    <div class="row g-3 mb-4">
+      <div class="col-6 col-lg-3">
+        <div class="stat-tile" style="--tile-grad:linear-gradient(135deg,var(--primary),var(--accent));">
+          <div class="stat-tile-icon" style="background:rgba(255,60,95,.12);color:var(--primary);"><i class="bi bi-heart-fill"></i></div>
+          <div class="stat-tile-num">{{ nb_favoris }}</div>
+          <div class="stat-tile-label">Favoris</div>
+        </div>
+      </div>
+      <div class="col-6 col-lg-3">
+        <div class="stat-tile" style="--tile-grad:linear-gradient(135deg,var(--teal),#22d3ee);">
+          <div class="stat-tile-icon" style="background:rgba(6,214,160,.12);color:var(--teal);"><i class="bi bi-chat-square-heart-fill"></i></div>
+          <div class="stat-tile-num">{{ nb_avis }}</div>
+          <div class="stat-tile-label">Avis publiés</div>
+        </div>
+      </div>
+      <div class="col-6 col-lg-3">
+        <div class="stat-tile" style="--tile-grad:linear-gradient(135deg,var(--accent),var(--gold));">
+          <div class="stat-tile-icon" style="background:rgba(255,140,66,.12);color:var(--accent);"><i class="bi bi-shop-window"></i></div>
+          <div class="stat-tile-num">{{ nb_restaurants }}</div>
+          <div class="stat-tile-label">Restaurants</div>
+        </div>
+      </div>
+      <div class="col-6 col-lg-3">
+        <div class="stat-tile" style="--tile-grad:linear-gradient(135deg,#8b5cf6,#ec4899);">
+          <div class="stat-tile-icon" style="background:rgba(139,92,246,.12);color:#a78bfa;"><i class="bi bi-magic"></i></div>
+          <div class="stat-tile-num">{{ recommandations.count }}</div>
+          <div class="stat-tile-label">Recommandations</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recommandations -->
+  <div class="d-panel mb-4">
+    <div class="d-panel-head">
+      <div class="d-panel-title">
+        <i class="bi bi-magic" style="color:var(--primary);"></i>
+        Recommandations pour vous
+      </div>
+      <a href="{% url 'liste_restaurants' %}" class="d-panel-link">Explorer →</a>
+    </div>
+    {% if recommandations %}
+    <div class="reco-grid">
+      {% for r in recommandations %}
+      <div class="position-relative">
+        <a href="{% url 'detail_restaurant' r.slug %}" class="reco-card">
+          <div class="reco-card-img">
+            {% if r.get_image %}<img src="{{ r.get_image }}" alt="{{ r.nom }}" loading="lazy">
+            {% else %}<div class="reco-card-placeholder">{% if r.categorie %}<i class="bi {{ r.categorie.icone }}"></i>{% else %}🍽️{% endif %}</div>{% endif %}
+          </div>
+          <div class="reco-card-body">
+            <div class="reco-cat">{% if r.categorie %}{{ r.categorie.nom }}{% endif %}</div>
+            <div class="reco-name">{{ r.nom }}</div>
+            <div class="reco-foot">
+              <span class="rating-sm">★ {{ r.note_avg|default:"Nouveau" }}</span>
+              <span class="{% if r.est_ouvert %}badge-open-sm{% else %}badge-closed-sm{% endif %}">{% if r.est_ouvert %}Ouvert{% else %}Fermé{% endif %}</span>
+            </div>
+          </div>
+        </a>
+        <a href="{% url 'toggle_favori' r.slug %}" class="btn-favori-card btn-favori-ajax" data-url="{% url 'toggle_favori' r.slug %}">
+          <i class="bi bi-heart"></i>
+        </a>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="d-empty">
+      <span class="d-empty-icon">✨</span>
+      Notez des restaurants pour recevoir des recommandations personnalisées !
+      <br><a href="{% url 'liste_restaurants' %}" class="btn-primary-grad mt-3 d-inline-flex" style="font-size:.85rem;padding:.55rem 1.4rem;">Explorer les restaurants</a>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="row g-4 pb-5">
+
+    <!-- Mes favoris -->
+    <div class="col-lg-6">
+      <div class="d-panel h-100">
+        <div class="d-panel-head">
+          <div class="d-panel-title"><i class="bi bi-heart-fill" style="color:var(--primary);"></i> Mes favoris</div>
+          <a href="{% url 'liste_restaurants' %}" class="d-panel-link">Explorer →</a>
+        </div>
+        {% if favoris %}
+          {% for fav in favoris %}
+          <a href="{% url 'detail_restaurant' fav.restaurant.slug %}" class="mini-row">
+            {% if fav.restaurant.get_image %}<img src="{{ fav.restaurant.get_image }}" class="mini-thumb" alt="{{ fav.restaurant.nom }}">
+            {% else %}<div class="mini-placeholder">{% if fav.restaurant.categorie %}<i class="bi {{ fav.restaurant.categorie.icone }}"></i>{% else %}🍽️{% endif %}</div>{% endif %}
+            <div class="flex-1">
+              <div class="mini-name">{{ fav.restaurant.nom }}</div>
+              <div class="mini-meta"><i class="bi bi-geo-alt me-1"></i>{{ fav.restaurant.adresse|truncatechars:30 }}</div>
+            </div>
+            <span class="rating-sm">★ {{ fav.restaurant.note_moyenne }}</span>
+          </a>
+          {% endfor %}
+        {% else %}
+        <div class="d-empty">
+          <span class="d-empty-icon">❤️</span>
+          Aucun favori pour le moment.<br>
+          Cliquez sur <i class="bi bi-heart" style="color:var(--primary);"></i> sur une fiche restaurant.
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Mes avis -->
+    <div class="col-lg-6">
+      <div class="d-panel h-100">
+        <div class="d-panel-head">
+          <div class="d-panel-title"><i class="bi bi-chat-square-text-fill" style="color:var(--teal);"></i> Mes derniers avis</div>
+        </div>
+        {% if mes_avis %}
+          {% for avis in mes_avis %}
+          <a href="{% url 'detail_restaurant' avis.restaurant.slug %}" class="mini-row">
+            <div class="review-badge">{{ avis.note }}★</div>
+            <div class="flex-1">
+              <div class="mini-name">{{ avis.restaurant.nom }}</div>
+              {% if avis.commentaire %}
+              <div class="mini-meta">{{ avis.commentaire|truncatechars:45 }}</div>
+              {% endif %}
+              <div class="mini-meta">{{ avis.date_creation|date:"d/m/Y" }}</div>
+            </div>
+          </a>
+          {% endfor %}
+        {% else %}
+        <div class="d-empty">
+          <span class="d-empty-icon">💬</span>
+          Vous n'avez pas encore laissé d'avis.<br>
+          Visitez un restaurant et partagez votre expérience !
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+</div>
+
+{% endblock %}

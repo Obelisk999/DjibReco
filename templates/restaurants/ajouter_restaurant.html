@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+{% block title %}Ajouter un restaurant — DjibReco{% endblock %}
+{% block content %}
+
+<div style="background:linear-gradient(135deg,var(--dark),#1a1a2e);padding:2.5rem 0;color:white;">
+  <div class="container">
+    <div class="section-eyebrow" style="color:var(--gold);">Administration</div>
+    <h1 style="font-size:1.8rem;font-weight:900;letter-spacing:-.5px;">Ajouter un restaurant</h1>
+    <p style="color:rgba(255,255,255,0.5);margin:0;">Enrichissez la plateforme DjibReco</p>
+  </div>
+</div>
+
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+      <div class="panel form-light">
+        <form method="post" enctype="multipart/form-data">
+          {% csrf_token %}
+
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label">Nom du restaurant *</label>
+              {{ form.nom }}
+            </div>
+            <div class="col-12">
+              <label class="form-label">Description *</label>
+              {{ form.description }}
+            </div>
+            <div class="col-md-8">
+              <label class="form-label">Adresse *</label>
+              {{ form.adresse }}
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Téléphone</label>
+              {{ form.telephone }}
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Catégorie</label>
+              {{ form.categorie }}
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Gamme de prix</label>
+              {{ form.gamme_prix }}
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Horaires</label>
+              {{ form.horaires }}
+            </div>
+            <div class="col-12">
+              <label class="form-label">URL image (Unsplash, etc.)</label>
+              {{ form.cover_url }}
+              <div style="font-size:.78rem;color:#94a3b8;margin-top:4px;">Collez une URL d'image depuis Unsplash ou tout autre source</div>
+            </div>
+            <div class="col-12">
+              <label class="form-label">Ou télécharger une image</label>
+              {{ form.image }}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Site web</label>
+              {{ form.site_web }}
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+              <div class="form-check mb-1">
+                {{ form.est_ouvert }}
+                <label class="form-check-label" style="color:var(--dark2);font-weight:600;">Ouvert</label>
+              </div>
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+              <div class="form-check mb-1">
+                {{ form.est_vedette }}
+                <label class="form-check-label" style="color:var(--dark2);font-weight:600;">Mis en avant</label>
+              </div>
+            </div>
+          </div>
+
+          <hr style="margin:1.5rem 0;">
+          <div class="d-flex gap-3">
+            <button type="submit" class="btn-primary-grad"><i class="bi bi-check-lg me-2"></i>Publier le restaurant</button>
+            <a href="{% url 'liste_restaurants' %}" class="btn-outline-red">Annuler</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
