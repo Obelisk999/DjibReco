@@ -11,13 +11,13 @@
 
 ---
 
-## 🎯 Présentation
+## Présentation
 
 **DjibReco** est une application web intelligente qui recommande des cafés et restaurants à Djibouti en combinant deux approches de recommandation dans un modèle hybride — offrant des suggestions personnalisées selon les préférences, les notes et le budget de chaque utilisateur.
 
 ---
 
-## 🤖 Système de Recommandation
+## Système de Recommandation
 ```
 📋 Filtrage par Contenu     👥 Filtrage Collaboratif
 ──────────────────────      ────────────────────────
@@ -28,7 +28,7 @@ Tags & localisation         Comportements
 
 ---
 
-## 🚀 Fonctionnalités
+## Fonctionnalités
 
 | Fonctionnalité | Statut |
 |:---|:---|
@@ -41,7 +41,7 @@ Tags & localisation         Comportements
 
 ---
 
-## 🛠️ Stack Technique
+## Stack Technique
 ```
 Backend      →  Python 3 · Django 5.2 · Scikit-learn
 Base données →  SQLite (développement) · PostgreSQL (production)
@@ -51,7 +51,7 @@ Auth         →  Django Authentication System
 
 ---
 
-## 📁 Structure du Projet
+##  Structure du Projet
 ```
 DjibReco/
 ├── djib_reco/
@@ -78,7 +78,7 @@ DjibReco/
 
 ---
 
-## ⚡ Installation & Lancement
+##  Installation & Lancement
 
 ### 1. Cloner le dépôt
 ```bash
@@ -123,7 +123,7 @@ L'application sera disponible sur **`http://localhost:8000`**
 
 ---
 
-## 🔮 Améliorations Futures
+##  Améliorations Futures
 
 - 🌍 Déploiement en ligne
 - 📍 Filtrage par géolocalisation
@@ -133,7 +133,7 @@ L'application sera disponible sur **`http://localhost:8000`**
 
 ---
 
-## 📖 Description des Fichiers Clés
+## Description des Fichiers Clés
 
 ### `manage.py`
 Point d'entrée de l'application Django.
@@ -172,7 +172,7 @@ Gestion des utilisateurs :
 
 ---
 
-### 🔄 Résumé du Fonctionnement
+###  Résumé du Fonctionnement
 ```
 1. manage.py        →  démarre l'application
 2. settings.py      →  configure Django
@@ -184,7 +184,7 @@ Gestion des utilisateurs :
 
 ---
 
-## 🤝 Comment Contribuer et Fusionner
+## Comment Contribuer et Fusionner
 
 Chaque fonctionnalité est développée dans une branche dédiée :
 
@@ -199,7 +199,7 @@ Chaque fonctionnalité est développée dans une branche dédiée :
 | `abdoulrazack` | Abdoulrazack |
 | `kenedid` | Kenedid |
 
-> ⚠️ **Règle absolue :** Aucun développement direct sur `main`. La branche `main` doit toujours rester stable et fonctionnelle.
+> **Règle absolue :** Aucun développement direct sur `main`. La branche `main` doit toujours rester stable et fonctionnelle.
 
 ---
 
@@ -224,10 +224,6 @@ git push origin main
 ```
 
 ---
-
-### 📋 Résumé du Flux de Travail
-```
-Ta branche (ex: fatouma)
         │
         │  git add . && git commit && git push
         │
