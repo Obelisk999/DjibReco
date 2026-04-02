@@ -134,8 +134,3 @@ LOGOUT_REDIRECT_URL = '/'
 # DIVERS
 # ============================================
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-```
-
----
-
-
