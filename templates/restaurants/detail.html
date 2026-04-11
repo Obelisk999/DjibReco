@@ -2,6 +2,8 @@
 {% block title %}{{ restaurant.nom }} — DjibReco{% endblock %}
 {% block content %}
 
+<div data-restaurant-id="{{ restaurant.id }}" data-page="detail">
+
 <!-- ── Hero ── -->
 <div class="detail-hero">
   {% if restaurant.get_image %}
@@ -128,18 +130,21 @@
         {% if plats %}
         <div class="menu-tab-content active" id="tab-plats">
           {% for item in plats %}
-          <div class="menu-item-card">
-            {% if item.get_image %}<img src="{{ item.get_image }}" alt="{{ item.nom }}" class="menu-item-img">
-            {% else %}<div class="menu-item-placeholder">🍽️</div>{% endif %}
-            <div class="menu-item-info">
-              <div class="menu-item-name">{{ item.nom }}</div>
-              {% if item.description %}<div class="menu-item-desc">{{ item.description }}</div>{% endif %}
-            </div>
-            <div class="d-flex flex-column align-items-end gap-1">
-              <div class="menu-item-price">{{ item.prix }} FDJ</div>
-              {% if user.is_staff %}
-              <a href="{% url 'supprimer_menu_item' item.id %}" onclick="return confirm('Supprimer ?')" style="font-size:.72rem;color:#f87171;text-decoration:none;">Suppr.</a>
-              {% endif %}
+          <div class="menu-item" data-restaurant-id="{{ restaurant.id }}">
+            <div class="menu-item-card">
+              {% if item.get_image %}<img src="{{ item.get_image }}" alt="{{ item.nom }}" class="menu-item-img">
+              {% else %}<div class="menu-item-placeholder">🍽️</div>{% endif %}
+              <div class="menu-item-info">
+                <div class="menu-item-name">{{ item.nom }}</div>
+                {% if item.description %}<div class="menu-item-desc">{{ item.description }}</div>{% endif %}
+              </div>
+              <div class="d-flex flex-column align-items-end gap-1">
+                <div class="menu-item-price">{{ item.prix }} FDJ</div>
+                <button data-clic-menu class="btn btn-sm" style="font-size:.75rem;padding:2px 8px;border-radius:50px;background:var(--primary);color:white;border:none;">Voir</button>
+                {% if user.is_staff %}
+                <a href="{% url 'supprimer_menu_item' item.id %}" onclick="return confirm('Supprimer ?')" style="font-size:.72rem;color:#f87171;text-decoration:none;">Suppr.</a>
+                {% endif %}
+              </div>
             </div>
           </div>
           {% endfor %}
@@ -149,14 +154,19 @@
         {% if boissons %}
         <div class="menu-tab-content {% if not plats %}active{% endif %}" id="tab-boissons">
           {% for item in boissons %}
-          <div class="menu-item-card">
-            {% if item.get_image %}<img src="{{ item.get_image }}" alt="{{ item.nom }}" class="menu-item-img">
-            {% else %}<div class="menu-item-placeholder">🥤</div>{% endif %}
-            <div class="menu-item-info">
-              <div class="menu-item-name">{{ item.nom }}</div>
-              {% if item.description %}<div class="menu-item-desc">{{ item.description }}</div>{% endif %}
+          <div class="menu-item" data-restaurant-id="{{ restaurant.id }}">
+            <div class="menu-item-card">
+              {% if item.get_image %}<img src="{{ item.get_image }}" alt="{{ item.nom }}" class="menu-item-img">
+              {% else %}<div class="menu-item-placeholder">🥤</div>{% endif %}
+              <div class="menu-item-info">
+                <div class="menu-item-name">{{ item.nom }}</div>
+                {% if item.description %}<div class="menu-item-desc">{{ item.description }}</div>{% endif %}
+              </div>
+              <div class="d-flex flex-column align-items-end gap-1">
+                <div class="menu-item-price">{{ item.prix }} FDJ</div>
+                <button data-clic-menu class="btn btn-sm" style="font-size:.75rem;padding:2px 8px;border-radius:50px;background:var(--primary);color:white;border:none;">Voir</button>
+              </div>
             </div>
-            <div class="menu-item-price">{{ item.prix }} FDJ</div>
           </div>
           {% endfor %}
         </div>
@@ -165,14 +175,19 @@
         {% if cafes %}
         <div class="menu-tab-content {% if not plats and not boissons %}active{% endif %}" id="tab-cafes">
           {% for item in cafes %}
-          <div class="menu-item-card">
-            {% if item.get_image %}<img src="{{ item.get_image }}" alt="{{ item.nom }}" class="menu-item-img">
-            {% else %}<div class="menu-item-placeholder">☕</div>{% endif %}
-            <div class="menu-item-info">
-              <div class="menu-item-name">{{ item.nom }}</div>
-              {% if item.description %}<div class="menu-item-desc">{{ item.description }}</div>{% endif %}
+          <div class="menu-item" data-restaurant-id="{{ restaurant.id }}">
+            <div class="menu-item-card">
+              {% if item.get_image %}<img src="{{ item.get_image }}" alt="{{ item.nom }}" class="menu-item-img">
+              {% else %}<div class="menu-item-placeholder">☕</div>{% endif %}
+              <div class="menu-item-info">
+                <div class="menu-item-name">{{ item.nom }}</div>
+                {% if item.description %}<div class="menu-item-desc">{{ item.description }}</div>{% endif %}
+              </div>
+              <div class="d-flex flex-column align-items-end gap-1">
+                <div class="menu-item-price">{{ item.prix }} FDJ</div>
+                <button data-clic-menu class="btn btn-sm" style="font-size:.75rem;padding:2px 8px;border-radius:50px;background:var(--primary);color:white;border:none;">Voir</button>
+              </div>
             </div>
-            <div class="menu-item-price">{{ item.prix }} FDJ</div>
           </div>
           {% endfor %}
         </div>
@@ -184,7 +199,6 @@
       <div class="panel">
         <div class="panel-title"><i class="bi bi-chat-square-heart" style="color:#ec4899;"></i>Avis ({{ nombre_avis }})</div>
 
-        <!-- Add review form -->
         {% if user.is_authenticated and not utilisateur_a_deja_note %}
         <div style="background:#f8faff;border-radius:var(--radius-sm);padding:1.5rem;margin-bottom:1.5rem;border:1px solid #e2e8f0;">
           <h6 style="font-weight:800;margin-bottom:1rem;color:var(--dark2);">Laissez votre avis</h6>
@@ -216,7 +230,6 @@
         <div class="alert alert-success mb-4"><i class="bi bi-check-circle me-2"></i>Vous avez déjà noté ce restaurant.</div>
         {% endif %}
 
-        <!-- Review list -->
         {% if avis_liste %}
           {% for avis in avis_liste %}
           <div class="avis-card">
@@ -287,35 +300,64 @@
       </div>
 
       <!-- Similaires -->
-      {% if similaires %}
-      <div class="panel">
-        <div class="panel-title"><i class="bi bi-grid" style="color:var(--primary);"></i>Similaires</div>
-        {% for s in similaires %}
-        <a href="{% url 'detail_restaurant' s.slug %}" class="mini-rest-row">
-          {% if s.get_image %}<img src="{{ s.get_image }}" class="mini-rest-img" alt="{{ s.nom }}">
-          {% else %}<div class="mini-rest-placeholder">🍽️</div>{% endif %}
-          <div>
-            <div class="mini-rest-name">{{ s.nom }}</div>
-            <div class="mini-rest-meta">★ {{ s.note_avg|default:"—" }} · {{ s.adresse|truncatechars:28 }}</div>
-          </div>
-        </a>
-        {% endfor %}
-      </div>
-      {% endif %}
+{% if similaires_collab or similaires_content %}
+<div class="panel">
+  <div class="panel-title">
+    <i class="bi bi-grid" style="color:var(--primary);"></i>Similaires
+  </div>
+  <small style="color:#94a3b8;font-size:.7rem;">
+  collab: {{ similaires_collab|length }} | content: {{ similaires_content|length }}
+</small>
+
+  <!-- Groupe collaboratif -->
+  {% for s in similaires_collab %}
+  <a href="{% url 'detail_restaurant' s.slug %}" class="mini-rest-row">
+    {% if s.get_image %}<img src="{{ s.get_image }}" class="mini-rest-img" alt="{{ s.nom }}">
+    {% else %}<div class="mini-rest-placeholder">🍽️</div>{% endif %}
+    <div>
+      <div class="mini-rest-name">{{ s.nom }}</div>
+      <div class="mini-rest-meta">★ {{ s.note_avg|default:"—" }} · {{ s.adresse|truncatechars:28 }}</div>
+    </div>
+  </a>
+  {% endfor %}
+
+  <!-- Séparateur uniquement si les deux groupes sont présents -->
+  {% if similaires_collab and similaires_content %}
+  <div style="display:flex;align-items:center;gap:8px;margin:12px 0;">
+    <div style="flex:1;height:1px;background:#e2e8f0;"></div>
+    <span style="font-size:.72rem;color:#94a3b8;white-space:nowrap;">Vous aimerez aussi</span>
+    <div style="flex:1;height:1px;background:#e2e8f0;"></div>
+  </div>
+  {% endif %}
+
+  <!-- Groupe content-based -->
+  {% for s in similaires_content %}
+  <a href="{% url 'detail_restaurant' s.slug %}" class="mini-rest-row">
+    {% if s.get_image %}<img src="{{ s.get_image }}" class="mini-rest-img" alt="{{ s.nom }}">
+    {% else %}<div class="mini-rest-placeholder">🍽️</div>{% endif %}
+    <div>
+      <div class="mini-rest-name">{{ s.nom }}</div>
+      <div class="mini-rest-meta">★ {{ s.note_avg|default:"—" }} · {{ s.adresse|truncatechars:28 }}</div>
+    </div>
+  </a>
+  {% endfor %}
+
+</div>
+{% endif %}
 
     </div>
   </div>
 </div>
 
+</div>{# fin data-restaurant-id #}
+
 {% endblock %}
 
 {% block extra_js %}
 <script>
-// Star rating logic for detail page
 (function() {
   const hiddenInput = document.getElementById('id_note');
   if (!hiddenInput) return;
-  const radioInputs = document.querySelectorAll('.star-rating-wrap input[type=radio]');
   const labels = document.querySelectorAll('.star-rating-wrap label');
   labels.forEach(lbl => {
     lbl.addEventListener('click', function() {

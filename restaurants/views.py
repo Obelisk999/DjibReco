@@ -5,6 +5,10 @@ from django.db.models import Avg, Q, Count
 from django.http import JsonResponse
 from .models import Restaurant, Categorie, MenuItem, Avis, Favori
 from .forms import RestaurantForm, MenuItemForm, AvisForm
+from recommandation.engine import enregistrer_interaction, restaurants_similaires
+from recommandation.models import CacheRecommandation
+from datetime import timedelta
+from django.utils import timezone
 
 
 def staff_required(view_func):
@@ -82,49 +86,99 @@ def liste_restaurants(request):
 
 
 def detail_restaurant(request, slug):
+    from recommandation.engine import enregistrer_interaction, restaurants_similaires
+
     restaurant = get_object_or_404(Restaurant, slug=slug)
-    plats = restaurant.menu_items.filter(type_item='plat', disponible=True)
-    boissons = restaurant.menu_items.filter(type_item='boisson', disponible=True)
-    cafes = restaurant.menu_items.filter(type_item='cafe', disponible=True)
+    plats      = restaurant.menu_items.filter(type_item='plat',    disponible=True)
+    boissons   = restaurant.menu_items.filter(type_item='boisson', disponible=True)
+    cafes      = restaurant.menu_items.filter(type_item='cafe',    disponible=True)
     avis_liste = restaurant.avis.select_related('utilisateur').all()
 
     utilisateur_a_deja_note = False
-    avis_form = None
+    avis_form  = None
     est_favori = False
 
     if request.user.is_authenticated:
-        utilisateur_a_deja_note = Avis.objects.filter(utilisateur=request.user, restaurant=restaurant).exists()
-        est_favori = Favori.objects.filter(utilisateur=request.user, restaurant=restaurant).exists()
+        utilisateur_a_deja_note = Avis.objects.filter(
+            utilisateur=request.user, restaurant=restaurant
+        ).exists()
+        est_favori = Favori.objects.filter(
+            utilisateur=request.user, restaurant=restaurant
+        ).exists()
         if not utilisateur_a_deja_note:
             avis_form = AvisForm()
+        enregistrer_interaction(request.user.id, restaurant.id, 'vue')
 
     if request.method == 'POST' and request.user.is_authenticated and not utilisateur_a_deja_note:
         avis_form = AvisForm(request.POST)
         if avis_form.is_valid():
             avis = avis_form.save(commit=False)
             avis.utilisateur = request.user
-            avis.restaurant = restaurant
+            avis.restaurant  = restaurant
             avis.save()
             messages.success(request, 'Votre avis a été publié !')
             return redirect('detail_restaurant', slug=slug)
 
-    # Restaurants similaires
-    similaires = Restaurant.objects.filter(
-        categorie=restaurant.categorie, est_ouvert=True
-    ).exclude(pk=restaurant.pk).annotate(note_avg=Avg('avis__note'))[:3]
+    # ─── Système de recommandation hybride ───────────────────────────────────
+
+    NB_CIBLE = 3
+
+    # 1) Filtrage collaboratif
+    ids_collaboratif   = restaurants_similaires(restaurant.id, nb=NB_CIBLE)
+    reco_collaborative = []
+    if ids_collaboratif:
+        qs    = Restaurant.objects.filter(
+            id__in=ids_collaboratif, est_ouvert=True
+        ).select_related('categorie')
+        index = {r.id: r for r in qs}
+        reco_collaborative = [index[i] for i in ids_collaboratif if i in index]
+
+    # 2) Filtrage content-based (complément)
+    ids_deja_inclus = {restaurant.pk} | {r.id for r in reco_collaborative}
+    reco_content = list(
+        Restaurant.objects.filter(
+            categorie=restaurant.categorie, est_ouvert=True
+        )
+        .exclude(pk__in=ids_deja_inclus)
+        .annotate(note_avg=Avg('avis__note'))
+        .order_by('-note_avg')[:NB_CIBLE]
+    )
+
+    # 3) Fusion séparée pour le template
+    similaires_collab  = reco_collaborative[:NB_CIBLE]
+    similaires_content = []
+    for r in reco_content:
+        if len(similaires_collab) + len(similaires_content) >= NB_CIBLE:
+            break
+        similaires_content.append(r)
+
+    # 4) Fallback ultime si tout est vide
+    if not similaires_collab and not similaires_content:
+        ids_deja_inclus.update(r.id for r in similaires_collab + similaires_content)
+        fallback = list(
+            Restaurant.objects.filter(est_ouvert=True)
+            .exclude(pk__in=ids_deja_inclus)
+            .annotate(note_avg=Avg('avis__note'))
+            .order_by('-note_avg')[:NB_CIBLE]
+        )
+        similaires_content = fallback  # fallback va dans content
+
+    # ─────────────────────────────────────────────────────────────────────────
 
     return render(request, 'restaurants/detail.html', {
-        'restaurant': restaurant,
-        'plats': plats,
-        'boissons': boissons,
-        'cafes': cafes,
-        'avis_liste': avis_liste,
-        'avis_form': avis_form,
+        'restaurant':              restaurant,
+        'plats':                   plats,
+        'boissons':                boissons,
+        'cafes':                   cafes,
+        'avis_liste':              avis_liste,
+        'avis_form':               avis_form,
         'utilisateur_a_deja_note': utilisateur_a_deja_note,
-        'est_favori': est_favori,
-        'note_moyenne': restaurant.note_moyenne(),
-        'nombre_avis': restaurant.nombre_avis(),
-        'similaires': similaires,
+        'est_favori':              est_favori,
+        'note_moyenne':            restaurant.note_moyenne(),
+        'nombre_avis':             restaurant.nombre_avis(),
+        'similaires':              similaires_collab + similaires_content,  # compatibilité
+        'similaires_collab':       similaires_collab,
+        'similaires_content':      similaires_content,
     })
 
 
@@ -143,37 +197,93 @@ def recherche(request):
 
 @login_required
 def dashboard_utilisateur(request):
+    from recommandation.engine import recommander_pour_utilisateur
+    from recommandation.models import CacheRecommandation
+    from datetime import timedelta
+    from django.utils import timezone
+
     user = request.user
-    favoris = Favori.objects.filter(utilisateur=user).select_related('restaurant__categorie')[:6]
-    mes_avis = Avis.objects.filter(utilisateur=user).select_related('restaurant')[:5]
+
+    # ── Données de base ────────────────────────────────────────────────────────
+    favoris             = Favori.objects.filter(utilisateur=user).select_related('restaurant__categorie')[:6]
+    mes_avis            = Avis.objects.filter(utilisateur=user).select_related('restaurant')[:5]
     restaurants_ajoutes = Restaurant.objects.filter(ajoute_par=user).annotate(
         note_avg=Avg('avis__note')
     )[:5]
 
-    # Recommandations personnalisées
+    NB_CIBLE    = 6
+    source_reco = 'hybride'
+
+    # ── Étape 1 : Filtrage collaboratif (via cache) ────────────────────────────
+    reco_collaborative = []
+    ids_collaboratif   = []
+    try:
+        cache = CacheRecommandation.objects.get(utilisateur=user)
+        age   = timezone.now() - cache.calculee_le
+        if age < timedelta(minutes=60) and cache.restaurant_ids:
+            ids_collaboratif = cache.restaurant_ids[:NB_CIBLE]
+        else:
+            raise CacheRecommandation.DoesNotExist
+    except CacheRecommandation.DoesNotExist:
+        ids_collaboratif = recommander_pour_utilisateur(user.id, nb=NB_CIBLE)
+        CacheRecommandation.objects.update_or_create(
+            utilisateur=user,
+            defaults={'restaurant_ids': ids_collaboratif}
+        )
+
+    if ids_collaboratif:
+        qs    = Restaurant.objects.filter(id__in=ids_collaboratif, est_ouvert=True).select_related('categorie')
+        index = {r.id: r for r in qs}
+        reco_collaborative = [index[i] for i in ids_collaboratif if i in index]
+
+    # ── Étape 2 : Content-based (catégories aimées ≥ 4 étoiles) ───────────────
+    ids_deja_notes = Avis.objects.filter(utilisateur=user).values_list('restaurant_id', flat=True)
+    ids_deja_inclus = set(ids_deja_notes) | {r.id for r in reco_collaborative}
+
     categories_aimees = Avis.objects.filter(
         utilisateur=user, note__gte=4
     ).values_list('restaurant__categorie_id', flat=True).distinct()
-    restaurants_notes_ids = Avis.objects.filter(utilisateur=user).values_list('restaurant_id', flat=True)
-    recommandations = Restaurant.objects.filter(
-        categorie__in=categories_aimees, est_ouvert=True
-    ).exclude(id__in=restaurants_notes_ids).annotate(
-        note_avg=Avg('avis__note')
-    ).order_by('-note_avg')[:6]
 
-    if not recommandations.exists():
-        recommandations = Restaurant.objects.exclude(
-            id__in=restaurants_notes_ids
-        ).annotate(note_avg=Avg('avis__note')).order_by('-note_avg')[:6]
+    reco_content = []
+    if categories_aimees:
+        reco_content = list(
+            Restaurant.objects.filter(
+                categorie__in=categories_aimees, est_ouvert=True
+            )
+            .exclude(id__in=ids_deja_inclus)
+            .annotate(note_avg=Avg('avis__note'))
+            .order_by('-note_avg')[:NB_CIBLE]
+        )
 
+    # ── Étape 3 : Fusion collaboratif + content-based ─────────────────────────
+    recommandations = reco_collaborative[:]
+    for r in reco_content:
+        if len(recommandations) >= NB_CIBLE:
+            break
+        recommandations.append(r)
+
+    # ── Étape 4 : Fallback populaires (si liste encore incomplète) ─────────────
+    if len(recommandations) < NB_CIBLE:
+        source_reco     = 'fallback'
+        ids_deja_inclus = ids_deja_inclus | {r.id for r in recommandations}
+        populaires = list(
+            Restaurant.objects.filter(est_ouvert=True)
+            .exclude(id__in=ids_deja_inclus)
+            .annotate(note_avg=Avg('avis__note'))
+            .order_by('-note_avg')[: NB_CIBLE - len(recommandations)]
+        )
+        recommandations.extend(populaires)
+
+    # ──────────────────────────────────────────────────────────────────────────
     return render(request, 'restaurants/dashboard.html', {
-        'favoris': favoris,
-        'mes_avis': mes_avis,
-        'restaurants_ajoutes': restaurants_ajoutes,
-        'recommandations': recommandations,
-        'nb_favoris': Favori.objects.filter(utilisateur=user).count(),
-        'nb_avis': Avis.objects.filter(utilisateur=user).count(),
-        'nb_restaurants': Restaurant.objects.filter(ajoute_par=user).count(),
+        'favoris':              favoris,
+        'mes_avis':             mes_avis,
+        'restaurants_ajoutes':  restaurants_ajoutes,
+        'recommandations':      recommandations,
+        'nb_favoris':           Favori.objects.filter(utilisateur=user).count(),
+        'nb_avis':              Avis.objects.filter(utilisateur=user).count(),
+        'nb_restaurants':       Restaurant.objects.filter(ajoute_par=user).count(),
+        'source_reco':          source_reco,
     })
 
 
