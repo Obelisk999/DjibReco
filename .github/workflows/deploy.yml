@@ -46,7 +46,6 @@ jobs:
   migrate:
     name: Migrations Supabase
     runs-on: ubuntu-latest
-    needs: test
     if: github.event_name == 'push'
     permissions:
       contents: read
@@ -73,8 +72,6 @@ jobs:
       - name: Appliquer les migrations
         run: python manage.py migrate --noinput
 
-      - name: Collecter les fichiers statiques
-        run: python manage.py collectstatic --noinput
 
   # ────────────────────────────────────────────
   # 3. Déploiement sur Vercel
@@ -82,7 +79,7 @@ jobs:
   deploy-vercel:
     name: Déploiement Vercel
     runs-on: ubuntu-latest
-    needs: migrate
+    needs: [test, migrate]
     if: github.event_name == 'push'
     permissions:
       contents: read
@@ -97,5 +94,5 @@ jobs:
           vercel-token: ${{ secrets.VERCEL }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          vercel-args: ${{ github.ref == 'refs/heads/main' && '--prod --yes' || '--yes' }}
+          vercel-args: ${{ github.ref == 'refs/heads/main' && '--prod' || '' }}
           working-directory: .
