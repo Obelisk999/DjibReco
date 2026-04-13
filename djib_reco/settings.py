@@ -23,6 +23,20 @@ _secret_key = os.environ.get('SECRET_KEY')
 if not _secret_key:
     if os.environ.get('DEBUG', 'False') == 'True':
         _secret_key = 'django-insecure-local-dev-key-not-for-production-use'
+    elif os.environ.get('VERCEL'):
+        # Sur Vercel sans SECRET_KEY définie, on génère une clé aléatoire par
+        # démarrage à froid. Les sessions ne persisteront pas entre les invocations.
+        # Pour un comportement correct, définissez SECRET_KEY dans les paramètres
+        # d'environnement de votre projet Vercel.
+        import secrets as _secrets
+        import warnings as _warnings
+        _warnings.warn(
+            "SECRET_KEY n'est pas définie. Une clé temporaire est utilisée. "
+            "Ajoutez SECRET_KEY dans les paramètres d'environnement Vercel.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
+        _secret_key = _secrets.token_hex(50)
     else:
         raise ValueError(
             "La variable d'environnement SECRET_KEY doit être définie. "
@@ -108,10 +122,13 @@ if _database_url:
         )
     }
 else:
+    # Sur Vercel (filesystem en lecture seule), utiliser /tmp pour SQLite.
+    # En local (DEBUG=True), utiliser le répertoire du projet.
+    _sqlite_path = BASE_DIR / 'db.sqlite3' if DEBUG else Path('/tmp') / 'db.sqlite3'
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
+            'NAME': _sqlite_path,
         }
     }
 
