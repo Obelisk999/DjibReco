@@ -5,9 +5,13 @@ Endpoints Django pour le système de recommandation.
   GET  /recommandations/pour-moi/          → liste JSON des restaurants recommandés
   POST /recommandations/interaction/       → enregistre une interaction implicite
   GET  /recommandations/similaires/<slug>/ → restaurants similaires (item-based)
+
+Format des logs:
+  [RecoAPI] <operation> <user_id> - <details> (<timing>)
 """
 import json
 import logging
+import time
 from datetime import timedelta
 
 from django.contrib.auth.decorators import login_required
@@ -56,16 +60,25 @@ def recommandations_pour_moi(request):
     Retourne jusqu'à 6 restaurants recommandés pour l'utilisateur connecté.
     Utilise le cache si disponible et frais (< CACHE_TTL_MINUTES).
     """
+    start = time.time()
     user = request.user
     nb   = int(request.GET.get('nb', 6))
+    
+    logger.info(f'[RecoAPI:recommandations] Début pour user {user.id} (nb={nb})')
 
     # Vérifier le cache
+    cache_hit = False
     try:
         cache = CacheRecommandation.objects.get(utilisateur=user)
         age   = timezone.now() - cache.calculee_le
         if age < timedelta(minutes=CACHE_TTL_MINUTES) and cache.restaurant_ids:
             ids_caches = cache.restaurant_ids[:nb]
             restaurants = _charger_restaurants(ids_caches, user)
+            elapsed = time.time() - start
+            logger.info(
+                f'[RecoAPI:recommandations] Cache HIT {len(restaurants)} '
+                f'resultats ({elapsed:.3f}s)'
+            )
             return JsonResponse({'recommandations': restaurants, 'source': 'cache'})
     except CacheRecommandation.DoesNotExist:
         pass
@@ -74,7 +87,10 @@ def recommandations_pour_moi(request):
     try:
         ids = recommander_pour_utilisateur(user.id, nb=nb)
     except Exception as e:
-        logger.error(f"[Reco] Erreur calcul pour user {user.id}: {e}")
+        elapsed = time.time() - start
+        logger.error(
+            f'[RecoAPI:recommandations] ERREUR user {user.id}: {e} ({elapsed:.3f}s)'
+        )
         return JsonResponse({'erreur': 'Calcul indisponible'}, status=500)
 
     # Mettre en cache
@@ -84,6 +100,11 @@ def recommandations_pour_moi(request):
     )
 
     restaurants = _charger_restaurants(ids, user)
+    elapsed = time.time() - start
+    logger.info(
+        f'[RecoAPI:recommandations] Calcul {len(restaurants)} resultats ({elapsed:.3f}s)'
+    )
+    
     return JsonResponse({'recommandations': restaurants, 'source': 'calcul'})
 
 
@@ -112,21 +133,38 @@ def enregistrer_interaction_view(request):
     Endpoint AJAX pour enregistrer une interaction implicite.
     Body JSON : {"restaurant_id": 12, "type_action": "vue"}
     """
+    start = time.time()
+    
     try:
         data        = json.loads(request.body)
         rid         = int(data['restaurant_id'])
         type_action = data['type_action']
-    except (KeyError, ValueError, json.JSONDecodeError):
+    except (KeyError, ValueError, json.JSONDecodeError) as e:
+        logger.warning(
+            f'[RecoAPI:interaction] Données invalides user {request.user.id}: {e}'
+        )
         return JsonResponse({'erreur': 'Données invalides'}, status=400)
 
     types_valides = {'vue', 'clic_menu', 'partage'}
     if type_action not in types_valides:
+        logger.warning(
+            f'[RecoAPI:interaction] Type invalide {type_action} user {request.user.id}'
+        )
         return JsonResponse({'erreur': f'type_action doit être parmi {types_valides}'}, status=400)
 
     if not Restaurant.objects.filter(id=rid).exists():
+        logger.warning(
+            f'[RecoAPI:interaction] Resto {rid} inexistant user {request.user.id}'
+        )
         return JsonResponse({'erreur': 'Restaurant introuvable'}, status=404)
 
     enregistrer_interaction(request.user.id, rid, type_action)
+    elapsed = time.time() - start
+    logger.info(
+        f'[RecoAPI:interaction] user {request.user.id} → '
+        f'resto {rid} [{type_action}] ({elapsed:.3f}s)'
+    )
+    
     return JsonResponse({'status': 'ok'})
 
 
@@ -138,8 +176,12 @@ def restaurants_similaires_view(request, slug):
     Retourne jusqu'à 4 restaurants similaires à celui identifié par `slug`.
     Accessible sans connexion (résultat non personnalisé).
     """
+    start = time.time()
+    
     restaurant = get_object_or_404(Restaurant, slug=slug)
     nb         = int(request.GET.get('nb', 4))
+    
+    logger.info(f'[RecoAPI:similaires] Début pour resto {restaurant.id} (nb={nb})')
 
     ids = restaurants_similaires(restaurant.id, nb=nb)
 
@@ -153,6 +195,11 @@ def restaurants_similaires_view(request, slug):
     restaurants = _charger_restaurants(ids, request.user) if request.user.is_authenticated \
                   else _charger_restaurants_anon(ids)
 
+    elapsed = time.time() - start
+    logger.info(
+        f'[RecoAPI:similaires] Retourné {len(restaurants)} resultats ({elapsed:.3f}s)'
+    )
+    
     return JsonResponse({'similaires': restaurants})
 
 

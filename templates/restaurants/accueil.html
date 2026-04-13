@@ -3,7 +3,7 @@
 {% block title %}DjibReco — Restaurants & Cafés à Djibouti{% endblock %}
 
 {% block content %}
-
+<div data-page="accueil">
 <!-- ═══ HERO ══════════════════════════════════════════════════════ -->
 <section class="hero">
   <div class="hero-bg-img"></div>
@@ -122,9 +122,9 @@
 
     <div class="row g-4">
       {% for r in restaurants_vedettes %}
-      <div class="col-md-6 col-lg-4">
+      <div class="col-md-6 col-lg-4" data-restaurant-id="{{ r.id }}">
         <div class="position-relative">
-          <a href="{% url 'detail_restaurant' r.slug %}" class="glass-card">
+          <a href="{% url 'detail_restaurant' r.slug %}" class="glass-card" data-restaurant-id="{{ r.id }}">
             <div class="glass-card-bg" style="background-image:url('{% if r.get_image %}{{ r.get_image }}{% else %}https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&h=400&fit=crop{% endif %}');"></div>
             <div class="glass-card-overlay"></div>
             <div class="glass-card-badges">
@@ -196,7 +196,7 @@
     </div>
     <div class="row g-4">
       {% for r in top_restaurants %}
-      <div class="col-sm-6 col-lg-4">
+      <div class="col-sm-6 col-lg-4" data-restaurant-id="{{ r.id }}">
         <div class="position-relative">
           <a href="{% url 'detail_restaurant' r.slug %}" class="rest-card">
             <div class="rest-card-img">
@@ -243,7 +243,7 @@
     {% if restaurants_recents %}
     <div class="row g-4">
       {% for r in restaurants_recents %}
-      <div class="col-sm-6 col-lg-3">
+      <div class="col-sm-6 col-lg-3" data-restaurant-id="{{ r.id }}">
         <div class="position-relative">
           <a href="{% url 'detail_restaurant' r.slug %}" class="rest-card">
             <div class="rest-card-img">
@@ -300,5 +300,5 @@
     </div>
   </div>
 </section>
-
+</div>
 {% endblock %}

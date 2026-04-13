@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% block title %}Restaurants — DjibReco{% endblock %}
 {% block content %}
-
+<div data-page="liste">
 <!-- Header -->
 <div style="background:linear-gradient(135deg,var(--dark),#1a1a2e);padding:3rem 0;color:white;">
   <div class="container">
@@ -81,7 +81,7 @@
   {% if restaurants %}
   <div class="row g-4">
     {% for r in restaurants %}
-    <div class="col-sm-6 col-lg-4 col-xl-3">
+    <div class="col-sm-6 col-lg-4 col-xl-3" data-restaurant-id="{{ r.id }}">
       <div class="position-relative h-100">
         <a href="{% url 'detail_restaurant' r.slug %}" class="rest-card">
           <div class="rest-card-img">
@@ -120,5 +120,6 @@
     </div>
   </div>
   {% endif %}
+</div>
 </div>
 {% endblock %}
