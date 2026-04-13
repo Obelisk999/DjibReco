@@ -119,13 +119,21 @@ TEMPLATES = [
 _database_url = os.environ.get('DATABASE_URL')
 
 if _database_url:
-    DATABASES = {
-        'default': dj_database_url.parse(
-            _database_url,
-            conn_max_age=600,
-            conn_health_checks=True,
-        )
-    }
+    try:
+        DATABASES = {
+            'default': dj_database_url.parse(
+                _database_url,
+                conn_max_age=0,
+                conn_health_checks=False,
+            )
+        }
+    except Exception as _db_exc:
+        raise ValueError(
+            f"DATABASE_URL est invalide : {_db_exc}\n"
+            "Utilisez une URL PostgreSQL au format :\n"
+            "  postgresql://postgres:[MOT_DE_PASSE]@db.XXXXXX.supabase.co:5432/postgres\n"
+            "Vous pouvez la trouver dans Supabase → Settings → Database → Connection string → URI."
+        ) from _db_exc
 else:
     # Sur Vercel (filesystem en lecture seule), utiliser /tmp pour SQLite.
     # En local (DEBUG=True), utiliser le répertoire du projet.

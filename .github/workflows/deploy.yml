@@ -51,8 +51,9 @@ jobs:
       contents: read
 
     env:
+      SECRET_KEY: ${{ secrets.SECRET_KEY }}
+      DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
       DEBUG: "False"
-      CI: "true"
 
     steps:
       - name: Récupérer le code
