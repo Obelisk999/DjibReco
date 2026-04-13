@@ -26,6 +26,5 @@
   ],
   "env": {
     "DJANGO_SETTINGS_MODULE": "djib_reco.settings"
-  },
-  "buildCommand": "python manage.py collectstatic --noinput"
+  }
 }
