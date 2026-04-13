@@ -37,6 +37,11 @@ if not _secret_key:
             stacklevel=2,
         )
         _secret_key = _secrets.token_hex(50)
+    elif os.environ.get('CI'):
+        # En environnement CI (ex. GitHub Actions), on génère une clé éphémère
+        # pour permettre l'exécution des commandes de gestion (migrate, test, etc.).
+        import secrets as _secrets
+        _secret_key = _secrets.token_hex(50)
     else:
         raise ValueError(
             "La variable d'environnement SECRET_KEY doit être définie. "
