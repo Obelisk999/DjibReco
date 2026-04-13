@@ -19,7 +19,16 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # ============================================
 # SÉCURITÉ
 # ============================================
-SECRET_KEY = os.environ.get('SECRET_KEY')
+_secret_key = os.environ.get('SECRET_KEY')
+if not _secret_key:
+    if os.environ.get('DEBUG', 'False') == 'True':
+        _secret_key = 'django-insecure-local-dev-key-not-for-production-use'
+    else:
+        raise ValueError(
+            "La variable d'environnement SECRET_KEY doit être définie. "
+            "Ajoutez-la dans les paramètres d'environnement de votre projet Vercel."
+        )
+SECRET_KEY = _secret_key
 
 DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
