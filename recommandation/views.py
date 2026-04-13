@@ -26,6 +26,8 @@ from .engine import (
     restaurants_similaires,
     enregistrer_interaction,
 )
+from .content_engine import recommander_content_based
+from .hybrid_engine import recommander_hybride, comparer_recommandations, analyser_couverture_algorithme
 from .models import CacheRecommandation
 
 logger = logging.getLogger(__name__)
@@ -207,3 +209,166 @@ def _charger_restaurants_anon(ids: list) -> list:
     qs    = Restaurant.objects.filter(id__in=ids, est_ouvert=True).select_related('categorie')
     index = {r.id: r for r in qs}
     return [_restaurant_to_dict(index[rid], set()) for rid in ids if rid in index]
+
+
+# ─── RECOMMANDATIONS CONTENT-BASED ─────────────────────────────────────────
+
+@login_required
+@require_GET
+def recommandations_content_based(request):
+    """
+    Retourne jusqu'à 6 restaurants recommandés via Content-Based Filtering.
+    Basé sur les caractéristiques des restaurants que l'utilisateur a aimés.
+    """
+    start = time.time()
+    user = request.user
+    nb   = int(request.GET.get('nb', 6))
+    
+    logger.info(f'[RecoAPI:content-based] Début pour user {user.id} (nb={nb})')
+
+    try:
+        recs = recommander_content_based(user.id, nb=nb)
+        ids = [r_id for r_id, _ in recs]  # Décompile les tuples (id, score)
+    except Exception as e:
+        elapsed = time.time() - start
+        logger.error(
+            f'[RecoAPI:content-based] ERREUR user {user.id}: {e} ({elapsed:.3f}s)'
+        )
+        return JsonResponse({'erreur': 'Calcul indisponible'}, status=500)
+
+    restaurants = _charger_restaurants(ids, user)
+    elapsed = time.time() - start
+    logger.info(
+        f'[RecoAPI:content-based] Retourné {len(restaurants)} resultats ({elapsed:.3f}s)'
+    )
+    
+    return JsonResponse({'recommandations': restaurants, 'methode': 'content-based'})
+
+
+# ─── RECOMMANDATIONS HYBRIDES ─────────────────────────────────────────────
+
+@login_required
+@require_GET
+def recommandations_hybride(request):
+    """
+    Retourne jusqu'à 6 restaurants via recommandations hybrides.
+    Combine Collaborative Filtering et Content-Based Filtering.
+    
+    Stratégies disponibles:
+      - weighted (défaut): α*CF + (1-α)*CB
+      - switching: CF si assez d'interactions, sinon CB
+      - feature_augmented: CF amélioré avec features CB
+    """
+    start = time.time()
+    user = request.user
+    nb       = int(request.GET.get('nb', 6))
+    alpha    = float(request.GET.get('alpha', 0.6))
+    strategy = request.GET.get('strategy', 'weighted')
+    
+    # Valider la stratégie
+    strategies_valides = {'weighted', 'switching', 'feature_augmented'}
+    if strategy not in strategies_valides:
+        logger.warning(
+            f'[RecoAPI:hybride] Stratégie invalide {strategy} user {user.id}'
+        )
+        return JsonResponse(
+            {'erreur': f'strategy doit être parmi {strategies_valides}'},
+            status=400
+        )
+    
+    logger.info(
+        f'[RecoAPI:hybride] Début user {user.id} '
+        f'(nb={nb}, alpha={alpha}, strategy={strategy})'
+    )
+
+    try:
+        ids = recommander_hybride(user.id, nb=nb, alpha=alpha, strategy=strategy)
+    except Exception as e:
+        elapsed = time.time() - start
+        logger.error(
+            f'[RecoAPI:hybride] ERREUR user {user.id}: {e} ({elapsed:.3f}s)'
+        )
+        return JsonResponse({'erreur': 'Calcul indisponible'}, status=500)
+
+    restaurants = _charger_restaurants(ids, user)
+    elapsed = time.time() - start
+    logger.info(
+        f'[RecoAPI:hybride] Retourné {len(restaurants)} resultats '
+        f'({elapsed:.3f}s, strategy={strategy})'
+    )
+    
+    return JsonResponse({
+        'recommandations': restaurants,
+        'methode': 'hybride',
+        'strategy': strategy,
+        'alpha': alpha
+    })
+
+
+# ─── COMPARAISON D'ALGORITHMES (DEBUG/TESTING) ──────────────────────────────
+
+@login_required
+@require_GET
+def comparer_algorithmes(request):
+    """
+    Compare tous les algorithmes pour un utilisateur.
+    Utile pour le debug et A/B testing.
+    """
+    start = time.time()
+    user = request.user
+    nb   = int(request.GET.get('nb', 6))
+    
+    logger.info(f'[RecoAPI:comparer] Début pour user {user.id}')
+
+    try:
+        resultats = comparer_recommandations(user.id, nb=nb)
+    except Exception as e:
+        elapsed = time.time() - start
+        logger.error(
+            f'[RecoAPI:comparer] ERREUR user {user.id}: {e} ({elapsed:.3f}s)'
+        )
+        return JsonResponse({'erreur': 'Calcul indisponible'}, status=500)
+
+    # Séparer la couverture du reste
+    coverage = resultats.pop('coverage')
+    
+    # Convertir les IDs en objets Restaurant
+    for key in ['cf', 'cb', 'hybrid_weighted', 'hybrid_switching', 'hybrid_augmented']:
+        ids = resultats[key]  # Maintenant une liste d'IDs, pas des tuples
+        resultats[key] = _charger_restaurants(ids, user)
+
+    elapsed = time.time() - start
+    logger.info(f'[RecoAPI:comparer] Comparaison complète ({elapsed:.3f}s)')
+    
+    return JsonResponse({
+        'comparaison': resultats,
+        'user_coverage': coverage
+    })
+
+
+# ─── ANALYSE DE COUVERTURE UTILISATEUR ──────────────────────────────────────
+
+@login_required
+@require_GET
+def analyse_utilisateur(request):
+    """
+    Analyse la couverture algorithmique pour l'utilisateur.
+    Indique quels algorithmes peuvent être utilisés et pourquoi.
+    """
+    start = time.time()
+    user = request.user
+    
+    logger.info(f'[RecoAPI:analyse] Analyse user {user.id}')
+
+    try:
+        couverture = analyser_couverture_algorithme(user.id)
+    except Exception as e:
+        elapsed = time.time() - start
+        logger.error(f'[RecoAPI:analyse] ERREUR user {user.id}: {e} ({elapsed:.3f}s)')
+        return JsonResponse({'erreur': 'Analyse indisponible'}, status=500)
+
+    elapsed = time.time() - start
+    logger.info(f'[RecoAPI:analyse] Analyse complète ({elapsed:.3f}s)')
+    
+    return JsonResponse({'couverture': couverture})
+

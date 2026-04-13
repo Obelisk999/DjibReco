@@ -25,4 +25,29 @@ urlpatterns = [
         views.restaurants_similaires_view,
         name='similaires'
     ),
+    # Content-Based Filtering
+    path(
+        'content-based/',
+        views.recommandations_content_based,
+        name='content_based'
+    ),
+    # Hybrid Filtering
+    path(
+        'hybride/',
+        views.recommandations_hybride,
+        name='hybride'
+    ),
+    # Comparaison d'algorithmes (debug/testing)
+    path(
+        'comparer/',
+        views.comparer_algorithmes,
+        name='comparer'
+    ),
+    # Analyse de couverture utilisateur
+    path(
+        'analyse/',
+        views.analyse_utilisateur,
+        name='analyse'
+    ),
 ]
+

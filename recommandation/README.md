@@ -1,8 +1,22 @@
 # 🎯 Système de Recommandation DjibReco
 
+## 🚀 Démarrage Rapide
+
+- **Nouvelle ici?** → Lire [QUICKSTART_HYBRID.md](QUICKSTART_HYBRID.md) (5 min)
+- **Tests en production?** → Voir [Comparer les algoritmes](#comparer-les-algorithmes) ci-dessous
+- **Pour déboguer?** → Consulter [MONITORING_HYBRID.md](MONITORING_HYBRID.md)
+
 ## Vue d'ensemble
 
-Le système de recommandation de DjibReco utilise un **filtrage collaboratif user-based** avec **fallback Wilson score** pour suggérer des restaurants personnalisés à chaque utilisateur.
+Le système de recommandation de DjibReco utilise **3 algorithmes** :
+
+| Algorithme | Cas d'usage | Perfs | Status |
+|-----------|-----------|-------|--------|
+| **Collaborative Filtering** | Utilisateurs avec historique | 150-300ms | ✅ Production |
+| **Content-Based Filtering** | Cold-start / Découverte | 200-400ms | ✅ Production |
+| **Hybrid (Weighted/Switching)** | 👑 Recommandé | 250-600ms | ✅ Production |
+
+Choisissez votre algorithme selon les besoins, ou utilisez **Hybrid Switching** pour une adaptation automatique.
 
 ### Architecture
 
@@ -223,6 +237,178 @@ Si un utilisateur a < 3 interactions :
 3. Wilson score = score bayésien qui favorise les restaurants avec beaucoup d'avis fiables
 
 ---
+
+## 🆕 Nouveaux Algorithmes : Content-Based et Hybrid
+
+### Content-Based Filtering (Filtrage par contenu)
+
+Recommande des restaurants **similaires à ceux que l'utilisateur a aimés**, basé sur les caractéristiques du restaurant.
+
+#### Features utilisées
+
+| Feature | Poids | Description |
+|---------|-------|-------------|
+| Catégorie | 40% | Type de cuisine (Pizzeria, Café, etc.) |
+| Gamme prix | 25% | Prix moyen (1-5 étoiles) |
+| Localité | 20% | Quartier/Région |
+| Tags | 15% | Caractéristiques (végétarien, terrasse, etc.) |
+
+#### Formule
+
+Pour chaque restaurant candidat, on calcule une similarité TF-IDF :
+
+$$\text{Similarité}(U, R) = \sum w_f \cdot \text{match}_f(U.pref_f, R.feature_f)$$
+
+Où chaque feature est normalisée et pondérée.
+
+#### Cas d'usage
+
+- ✅ **Utilisateurs sans historique** : Pas assez d'avis pour collaborative filtering
+- ✅ **Découverte** : Trouve des restaurants similaires aux favoris
+- ✅ **New restaurants** : Marche sans co-ratings
+
+#### API
+
+```bash
+# GET - Recommandations basées sur le contenu
+curl -H "Authorization: Bearer <token>" \
+  https://djib-reco.onrender.com/recommandations/content-based/?nb=6
+```
+
+### Hybrid Filtering (Filtrage hybride)
+
+Combine Collaborative Filtering + Content-Based pour obtenir le meilleur des deux mondes.
+
+#### Stratégies disponibles
+
+##### 1. Weighted (défaut: 60% CF, 40% CB)
+
+```
+Score = α * CF_score + (1-α) * CB_score
+```
+
+- `α=0.6` : Privilégie la similarité utilisateur (par défaut)
+- `α=0.3` : Privilégie les features du restaurant
+- Flexible pour A/B testing
+
+##### 2. Switching (basculement automatique)
+
+- **Si utilisateur a < 3 interactions** → Use Content-Based
+- **Sinon** → Use Collaborative Filtering
+- Adaptatif : change d'algo selon l'historique
+
+##### 3. Feature-Augmented (augmenté)
+
+- Commence par CF (filtrage collaboratif)
+- Enrichit les scores avec CB (features)
+- Meilleur compromis qualité/diversité
+
+#### API
+
+```bash
+# Weighted (défaut)
+curl -H "Authorization: Bearer <token>" \
+  'https://djib-reco.onrender.com/recommandations/hybride/?strategy=weighted&alpha=0.6'
+
+# Switching (adaptatif)
+curl -H "Authorization: Bearer <token>" \
+  'https://djib-reco.onrender.com/recommandations/hybride/?strategy=switching'
+
+# Feature-Augmented (enrichi)
+curl -H "Authorization: Bearer <token>" \
+  'https://djib-reco.onrender.com/recommandations/hybride/?strategy=feature_augmented&alpha=0.6'
+
+# Réponse
+{
+  "recommandations": [...],
+  "methode": "hybride",
+  "strategy": "weighted",
+  "alpha": 0.6
+}
+```
+
+#### Comparaison des algorithmes
+
+Pour tester tous les algorithmes et voir leurs différences :
+
+```bash
+# GET - Comparaison des 5 approches
+curl -H "Authorization: Bearer <token>" \
+  https://djib-reco.onrender.com/recommandations/comparer/?nb=6
+
+# Réponse
+{
+  "comparaison": {
+    "cf": [
+      {"id": 12, "nom": "Chez Giovanni", ...},
+      ...
+    ],
+    "cb": [
+      {"id": 15, "nom": "Marco's Pizza", ...},
+      ...
+    ],
+    "hybrid_weighted": [...],
+    "hybrid_switching": [...],
+    "hybrid_augmented": [...]
+  },
+  "user_coverage": {
+    "used_cf": true,
+    "used_cb": true,
+    "cold_start": false,
+    "recommendation_status": "warm_cf"
+  }
+}
+```
+
+#### Analyse de couverture utilisateur
+
+Pour comprendre quel algorithme peut servir un utilisateur :
+
+```bash
+# GET - Analyse de faisabilité
+curl -H "Authorization: Bearer <token>" \
+  https://djib-reco.onrender.com/recommandations/analyse/
+
+# Réponse
+{
+  "couverture": {
+    "used_cf": true,       # CF possible?
+    "used_cb": true,       # CB possible?
+    "interaction_count": 15,  # Nombre de vues/clics/partages
+    "avis_count": 8,       # Nombre d'avis donnés
+    "cold_start": false,   # Est en cold-start?
+    "recommendation_status": "warm_cf"  # CF/CB/cold_start
+  }
+}
+```
+
+---
+
+## Décision : Quel algorithme utiliser?
+
+```
+                     ┌─ Pas d'avis ───→ cold-start mode (fallback top global)
+                     |
+┌──────────────────┐ ├─ 1-2 avis ────→ Content-Based (plus de features)
+│ Utilisateur      │ │
+│   nouveau?       │ ├─ 3-5 avis ────→ Hybrid switching (adaptatif)
+└──────────────────┘ │
+                     └─ 5+ avis ─────→ Collaborative Filtering (voisins)
+                     
+                     │ Ou toujours Hybrid (meilleur compromis)
+```
+
+### Recommandation
+
+- **Production** : Utiliser **Hybrid (switching)** pour tous les utilisateurs
+  - Adaptatif : change d'algo selon l'historique
+  - Fallback automatique : ne jamais blocage
+  
+- **A/B Testing** : Comparer les stratégies via `/comparer/`
+
+- **Debug** : Utiliser `/analyse/` pour comprendre pourquoi un algo est utilisé
+
+
 
 ## Management Command
 

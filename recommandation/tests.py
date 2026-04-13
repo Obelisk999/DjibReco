@@ -16,6 +16,17 @@ from .engine import (
     restaurants_similaires,
     enregistrer_interaction,
 )
+from .content_engine import (
+    extraire_features_restaurant,
+    construire_profil_utilisateur,
+    similarite_contenu,
+    recommander_content_based,
+)
+from .hybrid_engine import (
+    recommander_hybride,
+    analyser_couverture_algorithme,
+    comparer_recommandations,
+)
 
 
 # ─── FIXTURES ──────────────────────────────────────────────────────────────
@@ -518,3 +529,390 @@ class TestSimilairesAPI(TestDataMixin):
         
         data = json.loads(response.content)
         self.assertLessEqual(len(data['similaires']), 2)
+
+
+# ─── TESTS CONTENT-BASED FILTERING ───────────────────────────────────────
+
+class TestExtraireFeatures(TestDataMixin):
+    """Tests de l'extraction de features."""
+    
+    def test_extraire_features_retourne_dict(self):
+        """extraire_features retourne un dictionnaire valide."""
+        features = extraire_features_restaurant(self.resto_pizza)
+        
+        self.assertIsInstance(features, dict)
+        self.assertIn('id', features)
+        self.assertIn('category', features)
+        self.assertIn('price_range', features)
+        self.assertIn('locality', features)
+    
+    def test_extraire_features_valeurs(self):
+        """Vérifie les valeurs extraites."""
+        features = extraire_features_restaurant(self.resto_pizza)
+        
+        self.assertEqual(features['id'], self.resto_pizza.id)
+        self.assertEqual(features['rating'], 4.5)  # (5+4)/2
+        self.assertEqual(features['review_count'], 2)
+    
+    def test_extraire_features_price_range(self):
+        """Price range est entre 1 et 5."""
+        features = extraire_features_restaurant(self.resto_pizza)
+        self.assertGreaterEqual(features['price_range'], 1)
+        self.assertLessEqual(features['price_range'], 5)
+
+
+class TestProfilUtilisateur(TestDataMixin):
+    """Tests de la construction du profil utilisateur."""
+    
+    def test_profil_utilisateur_retourne_dict(self):
+        """construire_profil_utilisateur retourne un dictionnaire."""
+        profil = construire_profil_utilisateur(self.user1.id)
+        
+        self.assertIsInstance(profil, dict)
+        self.assertIn('preferred_categories', profil)
+        self.assertIn('preferred_price', profil)
+        self.assertIn('avg_rating_given', profil)
+        self.assertIn('is_cold_start', profil)
+    
+    def test_profil_utilisateur_with_ratings(self):
+        """Profil d'utilisateur avec notes."""
+        profil = construire_profil_utilisateur(self.user1.id)
+        
+        # user1 a noté 2 restaurants (5 et 4 stars)
+        self.assertFalse(profil['is_cold_start'])
+        self.assertEqual(profil['rated_count'], 2)
+        # avg = (5+4)/2 = 4.5
+        self.assertAlmostEqual(profil['avg_rating_given'], 4.5)
+    
+    def test_profil_utilisateur_cold_start(self):
+        """Profil d'utilisateur sans notes (cold-start)."""
+        profil = construire_profil_utilisateur(self.user3.id)
+        
+        # user3 n'a pas noté de restaurants
+        self.assertTrue(profil['is_cold_start'])
+        self.assertEqual(profil['rated_count'], 0)
+        self.assertEqual(profil['preferred_categories'], {})
+
+
+class TestSimilariteContenu(TestDataMixin):
+    """Tests du calcul de similarité content-based."""
+    
+    def test_similarite_contenu_retourne_float(self):
+        """similarite_contenu retourne un float entre 0 et 1."""
+        profil = construire_profil_utilisateur(self.user1.id)
+        features = extraire_features_restaurant(self.resto_pizza2)
+        
+        score = similarite_contenu(profil, features)
+        
+        self.assertIsInstance(score, float)
+        self.assertGreaterEqual(score, 0.0)
+        self.assertLessEqual(score, 1.0)
+    
+    def test_similarite_contenu_vide(self):
+        """Similitude avec profil vide retourne 0."""
+        profil = None
+        features = extraire_features_restaurant(self.resto_pizza)
+        
+        score = similarite_contenu(profil, features)
+        
+        self.assertEqual(score, 0.0)
+
+
+class TestRecommandationContentBased(TestDataMixin):
+    """Tests du moteur content-based."""
+    
+    def test_recommander_content_based_retourne_liste(self):
+        """recommander_content_based retourne une liste."""
+        result = recommander_content_based(self.user1.id, nb=3)
+        
+        self.assertIsInstance(result, list)
+    
+    def test_recommander_content_based_tuples(self):
+        """Résultats sont des tuples (id, score)."""
+        result = recommander_content_based(self.user1.id, nb=3)
+        
+        for item in result:
+            self.assertIsInstance(item, tuple)
+            self.assertEqual(len(item), 2)
+            self.assertIsInstance(item[0], int)  # ID
+            self.assertIsInstance(item[1], float)  # Score
+    
+    def test_recommander_content_based_exclut_notes(self):
+        """N'inclut pas les restaurants déjà notés."""
+        result = recommander_content_based(self.user1.id, nb=10)
+        restaurant_ids = [r_id for r_id, _ in result]
+        
+        # user1 a déjà noté resto_pizza et resto_cafe
+        self.assertNotIn(self.resto_pizza.id, restaurant_ids)
+        self.assertNotIn(self.resto_cafe.id, restaurant_ids)
+    
+    def test_recommander_content_based_respect_limite(self):
+        """Respect du nombre de recommandations demandé."""
+        result = recommander_content_based(self.user1.id, nb=2)
+        self.assertLessEqual(len(result), 2)
+
+
+class TestContentBasedAPI(TestDataMixin):
+    """Tests de l'API /recommandations/content-based/."""
+    
+    def setUp(self):
+        """Setup du client test."""
+        super().setUp()
+        self.client = Client()
+    
+    def test_content_based_api_sans_auth(self):
+        """Endpoint requiert authentification."""
+        response = self.client.get('/recommandations/content-based/')
+        self.assertIn(response.status_code, [301, 302, 401, 403])
+    
+    def test_content_based_api_authentifie(self):
+        """API retourne recommandations."""
+        self.client.login(username='alice', password='test123')
+        response = self.client.get('/recommandations/content-based/')
+        
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.content)
+        
+        self.assertIn('recommandations', data)
+        self.assertIn('methode', data)
+        self.assertEqual(data['methode'], 'content-based')
+    
+    def test_content_based_api_respecte_nb(self):
+        """API respecte le paramètre nb."""
+        self.client.login(username='alice', password='test123')
+        response = self.client.get('/recommandations/content-based/?nb=2')
+        
+        data = json.loads(response.content)
+        self.assertLessEqual(len(data['recommandations']), 2)
+
+
+# ─── TESTS HYBRID FILTERING ────────────────────────────────────────────────
+
+class TestAnalyserCouverture(TestDataMixin):
+    """Tests de l'analyse de couverture."""
+    
+    def test_analyser_couverture_retourne_dict(self):
+        """analyser_couverture_algorithme retourne dict."""
+        couverture = analyser_couverture_algorithme(self.user1.id)
+        
+        self.assertIsInstance(couverture, dict)
+        self.assertIn('used_cf', couverture)
+        self.assertIn('used_cb', couverture)
+        self.assertIn('cold_start', couverture)
+        self.assertIn('recommendation_status', couverture)
+    
+    def test_analyser_couverture_valeurs_bool(self):
+        """Clés bool contiennent des booléens."""
+        couverture = analyser_couverture_algorithme(self.user1.id)
+        
+        self.assertIsInstance(couverture['used_cf'], bool)
+        self.assertIsInstance(couverture['used_cb'], bool)
+        self.assertIsInstance(couverture['cold_start'], bool)
+    
+    def test_analyser_couverture_cold_start(self):
+        """Détecte correctement le cold-start."""
+        # user3 sans interactions
+        couverture = analyser_couverture_algorithme(self.user3.id)
+        self.assertTrue(couverture['cold_start'])
+
+
+class TestRecommandationHybride(TestDataMixin):
+    """Tests du moteur hybride."""
+    
+    def test_recommander_hybride_retourne_liste(self):
+        """recommander_hybride retourne une liste."""
+        result = recommander_hybride(self.user1.id, nb=3)
+        
+        self.assertIsInstance(result, list)
+    
+    def test_recommander_hybride_weighted(self):
+        """Stratégie 'weighted' fonctionne."""
+        result = recommander_hybride(
+            self.user1.id,
+            nb=3,
+            alpha=0.6,
+            strategy='weighted'
+        )
+        
+        self.assertIsInstance(result, list)
+        self.assertLessEqual(len(result), 3)
+    
+    def test_recommander_hybride_switching(self):
+        """Stratégie 'switching' fonctionne."""
+        result = recommander_hybride(
+            self.user1.id,
+            nb=3,
+            strategy='switching'
+        )
+        
+        self.assertIsInstance(result, list)
+        self.assertLessEqual(len(result), 3)
+    
+    def test_recommander_hybride_feature_augmented(self):
+        """Stratégie 'feature_augmented' fonctionne."""
+        result = recommander_hybride(
+            self.user1.id,
+            nb=3,
+            strategy='feature_augmented'
+        )
+        
+        self.assertIsInstance(result, list)
+        self.assertLessEqual(len(result), 3)
+    
+    def test_recommander_hybride_alpha_valide(self):
+        """Alpha entre 0 et 1 est valide."""
+        for alpha in [0.0, 0.3, 0.6, 0.9, 1.0]:
+            result = recommander_hybride(
+                self.user1.id,
+                nb=2,
+                alpha=alpha,
+                strategy='weighted'
+            )
+            self.assertIsInstance(result, list)
+
+
+class TestComparerRecommandations(TestDataMixin):
+    """Tests de la comparaison d'algorithmes."""
+    
+    def test_comparer_retourne_dict(self):
+        """comparer_recommandations retourne un dictionnaire."""
+        resultats = comparer_recommandations(self.user1.id, nb=3)
+        
+        self.assertIsInstance(resultats, dict)
+        self.assertIn('cf', resultats)
+        self.assertIn('cb', resultats)
+        self.assertIn('hybrid_weighted', resultats)
+        self.assertIn('coverage', resultats)
+    
+    def test_comparer_tous_algorithmes(self):
+        """Comparaison inclut tous les algorithmes."""
+        resultats = comparer_recommandations(self.user1.id, nb=2)
+        
+        algos = ['cf', 'cb', 'hybrid_weighted', 'hybrid_switching', 'hybrid_augmented']
+        for algo in algos:
+            self.assertIn(algo, resultats)
+            self.assertIsInstance(resultats[algo], list)
+
+
+class TestHybridAPI(TestDataMixin):
+    """Tests de l'API /recommandations/hybride/."""
+    
+    def setUp(self):
+        """Setup du client test."""
+        super().setUp()
+        self.client = Client()
+    
+    def test_hybride_api_sans_auth(self):
+        """Endpoint requiert authentification."""
+        response = self.client.get('/recommandations/hybride/')
+        self.assertIn(response.status_code, [301, 302, 401, 403])
+    
+    def test_hybride_api_authentifie(self):
+        """API retourne recommandations."""
+        self.client.login(username='alice', password='test123')
+        response = self.client.get('/recommandations/hybride/')
+        
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.content)
+        
+        self.assertIn('recommandations', data)
+        self.assertIn('methode', data)
+        self.assertEqual(data['methode'], 'hybride')
+    
+    def test_hybride_api_strategies(self):
+        """API accepte différentes stratégies."""
+        self.client.login(username='alice', password='test123')
+        
+        for strategy in ['weighted', 'switching', 'feature_augmented']:
+            response = self.client.get(
+                f'/recommandations/hybride/?strategy={strategy}'
+            )
+            
+            data = json.loads(response.content)
+            self.assertEqual(data['strategy'], strategy)
+    
+    def test_hybride_api_invalid_strategy(self):
+        """Rejette les stratégies invalides."""
+        self.client.login(username='alice', password='test123')
+        response = self.client.get(
+            '/recommandations/hybride/?strategy=invalid'
+        )
+        
+        self.assertEqual(response.status_code, 400)
+    
+    def test_hybride_api_alpha_parameter(self):
+        """API accepte le paramètre alpha."""
+        self.client.login(username='alice', password='test123')
+        response = self.client.get(
+            '/recommandations/hybride/?alpha=0.7'
+        )
+        
+        data = json.loads(response.content)
+        self.assertAlmostEqual(data['alpha'], 0.7)
+
+
+class TestComparisonAPI(TestDataMixin):
+    """Tests de l'API /recommandations/comparer/."""
+    
+    def setUp(self):
+        """Setup du client test."""
+        super().setUp()
+        self.client = Client()
+    
+    def test_comparer_api_sans_auth(self):
+        """Endpoint requiert authentification."""
+        response = self.client.get('/recommandations/comparer/')
+        self.assertIn(response.status_code, [301, 302, 401, 403])
+    
+    def test_comparer_api_authentifie(self):
+        """API retourne comparaison."""
+        self.client.login(username='alice', password='test123')
+        response = self.client.get('/recommandations/comparer/')
+        
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.content)
+        
+        self.assertIn('comparaison', data)
+        self.assertIn('user_coverage', data)
+    
+    def test_comparer_api_tous_algorithmes(self):
+        """Comparaison affiche tous les algorithmes."""
+        self.client.login(username='alice', password='test123')
+        response = self.client.get('/recommandations/comparer/')
+        
+        data = json.loads(response.content)
+        comp = data['comparaison']
+        
+        self.assertIn('cf', comp)
+        self.assertIn('cb', comp)
+        self.assertIn('hybrid_weighted', comp)
+
+
+class TestAnalyseAPI(TestDataMixin):
+    """Tests de l'API /recommandations/analyse/."""
+    
+    def setUp(self):
+        """Setup du client test."""
+        super().setUp()
+        self.client = Client()
+    
+    def test_analyse_api_sans_auth(self):
+        """Endpoint requiert authentification."""
+        response = self.client.get('/recommandations/analyse/')
+        self.assertIn(response.status_code, [301, 302, 401, 403])
+    
+    def test_analyse_api_authentifie(self):
+        """API retourne analyse."""
+        self.client.login(username='alice', password='test123')
+        response = self.client.get('/recommandations/analyse/')
+        
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.content)
+        
+        self.assertIn('couverture', data)
+        couv = data['couverture']
+        
+        self.assertIn('used_cf', couv)
+        self.assertIn('used_cb', couv)
+        self.assertIn('recommendation_status', couv)
+
