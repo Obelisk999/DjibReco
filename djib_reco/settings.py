@@ -4,9 +4,7 @@ Django settings for djib_reco project.
 
 from pathlib import Path
 import os
-import dj_database_url
 from dotenv import load_dotenv
-from urllib.parse import urlparse, urlunparse, quote
 
 # Charge le fichier .env
 load_dotenv()
@@ -20,39 +18,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # ============================================
 # SÉCURITÉ
 # ============================================
-_secret_key = os.environ.get('SECRET_KEY')
-if not _secret_key:
-    if os.environ.get('DEBUG', 'False') == 'True':
-        _secret_key = 'django-insecure-local-dev-key-not-for-production-use'
-    elif os.environ.get('VERCEL'):
-        # Sur Vercel sans SECRET_KEY définie, on génère une clé aléatoire par
-        # démarrage à froid. Les sessions ne persisteront pas entre les invocations.
-        # Pour un comportement correct, définissez SECRET_KEY dans les paramètres
-        # d'environnement de votre projet Vercel.
-        import secrets as _secrets
-        import warnings as _warnings
-        _warnings.warn(
-            "SECRET_KEY n'est pas définie. Une clé temporaire est utilisée. "
-            "Ajoutez SECRET_KEY dans les paramètres d'environnement Vercel.",
-            RuntimeWarning,
-            stacklevel=2,
-        )
-        _secret_key = _secrets.token_hex(50)
-    elif os.environ.get('CI'):
-        # En environnement CI (ex. GitHub Actions), on génère une clé éphémère
-        # pour permettre l'exécution des commandes de gestion (migrate, test, etc.).
-        import secrets as _secrets
-        _secret_key = _secrets.token_hex(50)
-    else:
-        raise ValueError(
-            "La variable d'environnement SECRET_KEY doit être définie. "
-            "Ajoutez-la dans les paramètres d'environnement de votre projet Vercel."
-        )
-SECRET_KEY = _secret_key
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-local-dev-key-not-for-production-use')
 
-DEBUG = os.environ.get('DEBUG', 'False') == 'True'
+DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1,.vercel.app').split(',')
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
 
 # ============================================
@@ -76,7 +46,6 @@ INSTALLED_APPS = [
 # ============================================
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -114,57 +83,13 @@ TEMPLATES = [
 
 # ============================================
 # BASE DE DONNÉES
-# Utilise Supabase (PostgreSQL) si DATABASE_URL est défini,
-# sinon SQLite en local.
 # ============================================
-_database_url = os.environ.get('DATABASE_URL')
-
-def _parse_database_url(url):
-    """
-    Parse DATABASE_URL with dj_database_url.
-    If parsing fails (e.g. password contains special characters), automatically
-    percent-encodes the password portion and retries.
-    """
-    _parse_kwargs = dict(conn_max_age=0, conn_health_checks=False)
-    try:
-        return dj_database_url.parse(url, **_parse_kwargs)
-    except Exception:
-        pass
-    # Retry with percent-encoded password
-    _parsed = urlparse(url)
-    if _parsed.password:
-        _encoded_pw = quote(_parsed.password, safe='')
-        _user = _parsed.username or ''
-        _host = _parsed.hostname or ''
-        _netloc = f"{_user}:{_encoded_pw}@{_host}"
-        if _parsed.port:
-            _netloc += f":{_parsed.port}"
-        url = urlunparse(_parsed._replace(netloc=_netloc))
-    try:
-        return dj_database_url.parse(url, **_parse_kwargs)
-    except Exception as _db_exc:
-        raise ValueError(
-            f"DATABASE_URL est invalide : {_db_exc}\n"
-            "Utilisez une URL PostgreSQL au format :\n"
-            "  postgresql://postgres:[MOT_DE_PASSE]@db.XXXXXX.supabase.co:5432/postgres\n"
-            "Vous pouvez la trouver dans Supabase → Settings → Database → Connection string → URI."
-        ) from _db_exc
-
-
-if _database_url:
-    DATABASES = {
-        'default': _parse_database_url(_database_url)
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
-else:
-    # Sur Vercel (filesystem en lecture seule), utiliser /tmp pour SQLite.
-    # En local (DEBUG=True), utiliser le répertoire du projet.
-    _sqlite_path = BASE_DIR / 'db.sqlite3' if DEBUG else Path('/tmp') / 'db.sqlite3'
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': _sqlite_path,
-        }
-    }
+}
 
 
 # ============================================
@@ -194,30 +119,8 @@ STATIC_URL = '/static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
-STORAGES = {
-    'default': {
-        'BACKEND': 'django.core.files.storage.FileSystemStorage',
-    },
-    'staticfiles': {
-        'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage',
-    },
-}
-
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
-
-
-# ============================================
-# SÉCURITÉ EN PRODUCTION (Vercel)
-# ============================================
-if not DEBUG:
-    CSRF_TRUSTED_ORIGINS = os.environ.get(
-        'CSRF_TRUSTED_ORIGINS', 'https://*.vercel.app'
-    ).split(',')
-    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-    SECURE_SSL_REDIRECT = True
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
 
 # ============================================
 # AUTHENTIFICATION
