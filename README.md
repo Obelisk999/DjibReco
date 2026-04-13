@@ -4,8 +4,7 @@
 [![Statut](https://img.shields.io/badge/Statut-Production_Prête-brightgreen?style=flat-square)](.)
 [![Stack](https://img.shields.io/badge/Stack-Python_%7C_Django-%23092E20?style=flat-square)](.)
 [![Domaine](https://img.shields.io/badge/Domaine-IA_%7C_Systèmes_de_Recommandation-purple?style=flat-square)](.)
-[![Tests](https://img.shields.io/badge/Tests-68%2F68%20Passing-brightgreen?style=flat-square)](.)
-[![Licence](https://img.shields.io/badge/Licence-MIT-lightgrey?style=flat-square)](.)
+[![Tests](https://img.shields.io/badge/Tests-68%2F68%20Passing-brightgreen?style=flat-square)](.)[![Quality](https://img.shields.io/badge/Code_Quality-85%2F100-blue?style=flat-square)](./CORRECTIONS_APPLIED.md)[![Licence](https://img.shields.io/badge/Licence-MIT-lightgrey?style=flat-square)](.)
 
 > Comment trouver rapidement à Djibouti un café ou un restaurant qui correspond à ses goûts et à son budget ?
 > **DjibReco** répond à cette question grâce à un moteur de recommandation hybride basé sur l'IA.

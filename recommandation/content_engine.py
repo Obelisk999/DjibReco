@@ -45,11 +45,18 @@ def extraire_features_restaurant(restaurant):
         start = time.time()
         
         # Get restaurant properties
+        # Map gamme_prix to numeric scale
+        price_map = {'$': 1, '$$': 2, '$$$': 3}
+        price_range = price_map.get(restaurant.gamme_prix, 2) if hasattr(restaurant, 'gamme_prix') else 2
+        
+        # Get category name from ForeignKey
+        category_name = restaurant.categorie.nom.lower() if restaurant.categorie else ''
+        
         features = {
             'id': restaurant.id,
-            'category': getattr(restaurant, 'category', '').lower().strip() if hasattr(restaurant, 'category') else '',
-            'price_range': getattr(restaurant, 'prix_moyen', 3),  # Default medium
-            'locality': getattr(restaurant, 'locality', '').lower().strip() if hasattr(restaurant, 'locality') else '',
+            'category': category_name,
+            'price_range': price_range,
+            'locality': restaurant.adresse.lower().strip() if hasattr(restaurant, 'adresse') else '',
             'name': restaurant.nom.lower() if hasattr(restaurant, 'nom') else '',
         }
         

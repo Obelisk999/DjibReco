@@ -222,50 +222,6 @@ def recommander_pour_utilisateur(user_id: int, nb: int = NB_RECO_DEFAULT) -> lis
     
     return result
 
-    # Cold-start : pas assez de données
-    if len(profil_cible) < SEUIL_COLD_START:
-        logger.info(f"[Reco] Cold-start pour user {user_id} ({len(profil_cible)} interactions)")
-        return _fallback_top_global(user_id, nb, profil_cible)
-
-    # Calcul des similarités avec tous les autres utilisateurs
-    similarites = []
-    for uid, profil in matrice.items():
-        if uid == user_id:
-            continue
-        sim = similarite_cosinus(profil_cible, profil)
-        if sim > 0:
-            similarites.append((uid, sim))
-
-    if not similarites:
-        return _fallback_top_global(user_id, nb, profil_cible)
-
-    # Garder les NB_VOISINS meilleurs voisins
-    voisins = sorted(similarites, key=lambda x: -x[1])[:NB_VOISINS]
-
-    # Agrégation : score_prédit(restaurant) = Σ(sim_voisin * score_voisin) / Σ(sim_voisin)
-    scores_cumules   = defaultdict(float)
-    similarites_cumu = defaultdict(float)
-    deja_connus      = set(profil_cible.keys())
-
-    for uid_voisin, sim in voisins:
-        for rid, score in matrice[uid_voisin].items():
-            if rid not in deja_connus:
-                scores_cumules[rid]   += sim * score
-                similarites_cumu[rid] += sim
-
-    if not scores_cumules:
-        return _fallback_top_global(user_id, nb, profil_cible)
-
-    # Score normalisé
-    scores_finaux = {
-        rid: scores_cumules[rid] / similarites_cumu[rid]
-        for rid in scores_cumules
-    }
-
-    # Trier et retourner les IDs
-    recommandes = sorted(scores_finaux, key=lambda r: -scores_finaux[r])
-    return recommandes[:nb]
-
 
 # ─── RECOMMANDATIONS SIMILAIRES (Item-Based léger) ───────────────────────────
 
