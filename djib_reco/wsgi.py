@@ -17,6 +17,9 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'djib_reco.settings')
 
 application = get_wsgi_application()
 
+# Vercel's @vercel/python runtime looks for a variable named `app`.
+app = application
+
 # Sur Vercel chaque invocation dispose d'un /tmp isolé et vide (SQLite éphémère).
 # On applique les migrations au démarrage pour que toutes les tables existent.
 # Note : les instances Vercel sont isolées, donc pas de race condition sur /tmp.
