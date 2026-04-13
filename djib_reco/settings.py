@@ -6,6 +6,7 @@ from pathlib import Path
 import os
 import dj_database_url
 from dotenv import load_dotenv
+from urllib.parse import urlparse, urlunparse, quote
 
 # Charge le fichier .env
 load_dotenv()
@@ -118,15 +119,29 @@ TEMPLATES = [
 # ============================================
 _database_url = os.environ.get('DATABASE_URL')
 
-if _database_url:
+def _parse_database_url(url):
+    """
+    Parse DATABASE_URL with dj_database_url.
+    If parsing fails (e.g. password contains special characters), automatically
+    percent-encodes the password portion and retries.
+    """
+    _parse_kwargs = dict(conn_max_age=0, conn_health_checks=False)
     try:
-        DATABASES = {
-            'default': dj_database_url.parse(
-                _database_url,
-                conn_max_age=0,
-                conn_health_checks=False,
-            )
-        }
+        return dj_database_url.parse(url, **_parse_kwargs)
+    except Exception:
+        pass
+    # Retry with percent-encoded password
+    _parsed = urlparse(url)
+    if _parsed.password:
+        _encoded_pw = quote(_parsed.password, safe='')
+        _user = _parsed.username or ''
+        _host = _parsed.hostname or ''
+        _netloc = f"{_user}:{_encoded_pw}@{_host}"
+        if _parsed.port:
+            _netloc += f":{_parsed.port}"
+        url = urlunparse(_parsed._replace(netloc=_netloc))
+    try:
+        return dj_database_url.parse(url, **_parse_kwargs)
     except Exception as _db_exc:
         raise ValueError(
             f"DATABASE_URL est invalide : {_db_exc}\n"
@@ -134,6 +149,12 @@ if _database_url:
             "  postgresql://postgres:[MOT_DE_PASSE]@db.XXXXXX.supabase.co:5432/postgres\n"
             "Vous pouvez la trouver dans Supabase → Settings → Database → Connection string → URI."
         ) from _db_exc
+
+
+if _database_url:
+    DATABASES = {
+        'default': _parse_database_url(_database_url)
+    }
 else:
     # Sur Vercel (filesystem en lecture seule), utiliser /tmp pour SQLite.
     # En local (DEBUG=True), utiliser le répertoire du projet.
