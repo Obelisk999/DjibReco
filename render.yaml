@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: djibreco
+    env: python
+    buildCommand: "./build.sh"
+    startCommand: "gunicorn djib_reco.wsgi:application"
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: False
+      - key: ALLOWED_HOSTS
+        value: djibreco.onrender.com
+      - key: PYTHON_VERSION
+        value: 3.12.0
