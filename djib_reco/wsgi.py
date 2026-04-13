@@ -25,11 +25,10 @@ if not settings.DEBUG and 'sqlite3' in settings.DATABASES['default']['ENGINE']:
     _logger = logging.getLogger(__name__)
     try:
         _db_path = str(settings.DATABASES['default']['NAME'])
-        _conn = sqlite3.connect(_db_path)
-        _tables = _conn.execute(
-            "SELECT name FROM sqlite_master WHERE type='table'"
-        ).fetchall()
-        _conn.close()
+        with sqlite3.connect(_db_path) as _conn:
+            _tables = _conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            ).fetchall()
         if not _tables:
             from django.core.management import call_command
             call_command('migrate', '--noinput', verbosity=0)
