@@ -64,7 +64,11 @@ def recommandations_pour_moi(request):
     """
     start = time.time()
     user = request.user
-    nb   = int(request.GET.get('nb', 6))
+    try:
+        nb = int(request.GET.get('nb', 6))
+        nb = min(max(1, nb), 100)  # Limiter à [1, 100]
+    except (ValueError, TypeError):
+        nb = 6
     
     logger.info(f'[RecoAPI:recommandations] Début pour user {user.id} (nb={nb})')
 
@@ -181,7 +185,11 @@ def restaurants_similaires_view(request, slug):
     start = time.time()
     
     restaurant = get_object_or_404(Restaurant, slug=slug)
-    nb         = int(request.GET.get('nb', 4))
+    try:
+        nb = int(request.GET.get('nb', 4))
+        nb = min(max(1, nb), 100)  # Limiter à [1, 100]
+    except (ValueError, TypeError):
+        nb = 4
     
     logger.info(f'[RecoAPI:similaires] Début pour resto {restaurant.id} (nb={nb})')
 
@@ -222,7 +230,11 @@ def recommandations_content_based(request):
     """
     start = time.time()
     user = request.user
-    nb   = int(request.GET.get('nb', 6))
+    try:
+        nb = int(request.GET.get('nb', 6))
+        nb = min(max(1, nb), 100)  # Limiter à [1, 100]
+    except (ValueError, TypeError):
+        nb = 6
     
     logger.info(f'[RecoAPI:content-based] Début pour user {user.id} (nb={nb})')
 
@@ -261,8 +273,16 @@ def recommandations_hybride(request):
     """
     start = time.time()
     user = request.user
-    nb       = int(request.GET.get('nb', 6))
-    alpha    = float(request.GET.get('alpha', 0.6))
+    try:
+        nb = int(request.GET.get('nb', 6))
+        nb = min(max(1, nb), 100)  # Limiter à [1, 100]
+    except (ValueError, TypeError):
+        nb = 6
+    try:
+        alpha = float(request.GET.get('alpha', 0.6))
+        alpha = max(0.0, min(1.0, alpha))  # Limiter à [0.0, 1.0]
+    except (ValueError, TypeError):
+        alpha = 0.6
     strategy = request.GET.get('strategy', 'weighted')
     
     # Valider la stratégie
@@ -316,7 +336,11 @@ def comparer_algorithmes(request):
     """
     start = time.time()
     user = request.user
-    nb   = int(request.GET.get('nb', 6))
+    try:
+        nb = int(request.GET.get('nb', 6))
+        nb = min(max(1, nb), 100)  # Limiter à [1, 100]
+    except (ValueError, TypeError):
+        nb = 6
     
     logger.info(f'[RecoAPI:comparer] Début pour user {user.id}')
 

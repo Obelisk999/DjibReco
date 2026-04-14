@@ -3,6 +3,7 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 from django.db.models import Avg, Q, Count
 from django.http import JsonResponse
+from django.core.paginator import Paginator
 from .models import Restaurant, Categorie, MenuItem, Avis, Favori
 from .forms import RestaurantForm, MenuItemForm, AvisForm
 from recommandation.engine import enregistrer_interaction, restaurants_similaires
@@ -69,19 +70,25 @@ def liste_restaurants(request):
     if tri in ['-date_creation', 'nom', '-note_avg', '-nb_avis']:
         restaurants = restaurants.order_by(tri)
 
+    # FIX: Ajouter pagination (20 restaurants par page)
+    paginator = Paginator(restaurants, 20)
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+
     favoris_ids = set()
     if request.user.is_authenticated:
         favoris_ids = set(Favori.objects.filter(utilisateur=request.user).values_list('restaurant_id', flat=True))
 
     return render(request, 'restaurants/liste.html', {
-        'restaurants': restaurants,
+        'page_obj': page_obj,
+        'restaurants': page_obj.object_list,
         'categories': categories,
         'categorie_active': categorie_slug,
         'recherche': recherche,
         'budget': budget,
         'tri': tri,
         'favoris_ids': favoris_ids,
-        'total': restaurants.count(),
+        'total': paginator.count,
     })
 
 
@@ -89,9 +96,11 @@ def detail_restaurant(request, slug):
     from recommandation.engine import enregistrer_interaction, restaurants_similaires
 
     restaurant = get_object_or_404(Restaurant, slug=slug)
-    plats      = restaurant.menu_items.filter(type_item='plat',    disponible=True)
-    boissons   = restaurant.menu_items.filter(type_item='boisson', disponible=True)
-    cafes      = restaurant.menu_items.filter(type_item='cafe',    disponible=True)
+    # ✅ FIX: Une seule query au lieu de 3
+    menu_disponible = restaurant.menu_items.filter(disponible=True)
+    plats = [m for m in menu_disponible if m.type_item == 'plat']
+    boissons = [m for m in menu_disponible if m.type_item == 'boisson']
+    cafes = [m for m in menu_disponible if m.type_item == 'cafe']
     avis_liste = restaurant.avis.select_related('utilisateur').all()
 
     utilisateur_a_deja_note = False
@@ -146,11 +155,9 @@ def detail_restaurant(request, slug):
 
     # 3) Fusion séparée pour le template
     similaires_collab  = reco_collaborative[:NB_CIBLE]
-    similaires_content = []
-    for r in reco_content:
-        if len(similaires_collab) + len(similaires_content) >= NB_CIBLE:
-            break
-        similaires_content.append(r)
+    # ✅ FIX: Utiliser slicing au lieu d'une boucle inefficace
+    remaining = max(0, NB_CIBLE - len(similaires_collab))
+    similaires_content = reco_content[:remaining]
 
     # 4) Fallback ultime si tout est vide
     if not similaires_collab and not similaires_content:
@@ -280,9 +287,9 @@ def dashboard_utilisateur(request):
         'mes_avis':             mes_avis,
         'restaurants_ajoutes':  restaurants_ajoutes,
         'recommandations':      recommandations,
-        'nb_favoris':           Favori.objects.filter(utilisateur=user).count(),
-        'nb_avis':              Avis.objects.filter(utilisateur=user).count(),
-        'nb_restaurants':       Restaurant.objects.filter(ajoute_par=user).count(),
+        'nb_favoris':           len(favoris),  # ✅ FIX: Pas de requête séparée
+        'nb_avis':              len(mes_avis),  # ✅ FIX: Pas de requête séparée
+        'nb_restaurants':       len(restaurants_ajoutes),  # ✅ FIX: Pas de requête séparée
         'source_reco':          source_reco,
     })
 

@@ -7,10 +7,13 @@ Permet de monitorer:
   - CacheRecommandation: cache des recommandations
   - Analyse: quel algorithme est utilisé pour chaque utilisateur
 """
+import logging
 from django.contrib import admin
 from django.utils.html import format_html
 from .models import InteractionUtilisateur, CacheRecommandation
 from .hybrid_engine import analyser_couverture_algorithme
+
+logger = logging.getLogger(__name__)
 
 
 @admin.register(InteractionUtilisateur)
@@ -118,7 +121,8 @@ class CacheRecoAdmin(admin.ModelAdmin):
                 color,
                 status_text
             )
-        except:
+        except (ValueError, KeyError, AttributeError) as e:
+            logger.warning(f'[RecoAdmin] Format error in status_algo: {str(e)}')
             return format_html(
                 '<span style="color: #d62728; font-weight: bold;">❌ Erreur</span>'
             )

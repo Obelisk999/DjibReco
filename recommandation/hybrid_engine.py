@@ -160,7 +160,8 @@ def recommander_hybride(user_id, nb=6, alpha=0.6, strategy='weighted'):
             from recommandation.content_engine import recommander_content_based
             recs = recommander_content_based(user_id, nb)
             return [r_id for r_id, _ in recs]
-        except:
+        except Exception as e:
+            logger.warning(f'[HybridEngine] Fallback CB failed for user {user_id}: {str(e)}')
             return []
 
 

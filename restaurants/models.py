@@ -1,10 +1,20 @@
 from django.db import models
 from django.contrib.auth.models import User
-from django.core.validators import MinValueValidator, MaxValueValidator
+from django.core.validators import MinValueValidator, MaxValueValidator, FileExtensionValidator
+from django.core.exceptions import ValidationError
 from django.utils.text import slugify
 
 
 class Categorie(models.Model):
+    """
+    Catégorie de restaurant (pizzeria, burger, seafood, etc.)
+    
+    Attributs:
+        nom: Nom de la catégorie (ex: 'Pizzeria')
+        icone: Emoji représentant la catégorie
+        slug: URL-friendly identifier
+        cover_url: Image optionnelle (Unsplash)
+    """
     nom = models.CharField(max_length=100)
     icone = models.CharField(max_length=10, default='🍽️')
     slug = models.SlugField(unique=True, blank=True)
@@ -24,6 +34,28 @@ class Categorie(models.Model):
 
 
 class Restaurant(models.Model):
+    """
+    Modele Restaurant - Denormalise pour performance
+    
+    Contient toutes les infos publiques: localisation, horaires, prix, images.
+    Les images comportent 2 sources possibles: upload Django (image) ou URL externe (cover_url).
+    
+    Attributs:
+        nom: Nom du restaurant
+        slug: URL-friendly identifier (auto-generate)
+        description: Texte descriptif
+        adresse: Localisation complete
+        categorie: Lien vers Categorie (M2O)
+        gamme_prix: $ / $$ / $$$
+        ajoute_par: Utilisateur qui a ajoute/gere (FK User)
+        image: Image uploadee sur le serveur
+        cover_url: Image externe (fallback)
+    
+    Relations:
+        menu_items: MenuItems du restaurant (O2M reverse)
+        avis: Avis utilisateurs (O2M reverse)
+        favoris: Utilisateurs qui ont "aime" (O2M reverse)
+    """
     GAMME_CHOICES = [
         ('$', 'Économique (< 1000 FDJ)'),
         ('$$', 'Modéré (1000-3000 FDJ)'),
@@ -90,17 +122,45 @@ class Restaurant(models.Model):
 
 
 class MenuItem(models.Model):
+    """
+    Article de menu d'un restaurant (plat, boisson, cafe)
+    
+    Represente un item specifique du menu avec image optionnelle.
+    Les images sont evaluees pour leur type (extension) et taille (max 5MB).
+    
+    Attributs:
+        restaurant: FK vers le restaurant propriétaire
+        nom: Nom du plat/boisson
+        description: Details optionnels
+        prix: En FDJ (Franc Djibouti)
+        type_item: 'plat' / 'boisson' / 'cafe'
+        image: Image uploadee sur le serveur (avec validation)
+        cover_url: URL image externe (fallback)
+        disponible: Disponibilité actuelle
+    
+    Validations:
+        - Extension image: jpg, jpeg, png, gif, webp
+        - Taille max: 5MB
+    
+    Relations:
+        restaurant: M2O relationship
+    """
     TYPE_CHOICES = [
         ('plat', 'Plat'),
         ('boisson', 'Boisson'),
-        ('cafe', 'Café & Dessert'),
+        ('cafe', 'Cafe & Dessert'),
     ]
     restaurant = models.ForeignKey(Restaurant, on_delete=models.CASCADE, related_name='menu_items')
     nom = models.CharField(max_length=200)
     description = models.TextField(blank=True)
     prix = models.DecimalField(max_digits=8, decimal_places=0)
     type_item = models.CharField(max_length=20, choices=TYPE_CHOICES, default='plat')
-    image = models.ImageField(upload_to='menu/', blank=True, null=True)
+    image = models.ImageField(
+        upload_to='menu/',
+        blank=True,
+        null=True,
+        validators=[FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'gif', 'webp'])]
+    )
     cover_url = models.URLField(blank=True, help_text="URL image externe du plat")
     disponible = models.BooleanField(default=True)
     date_creation = models.DateTimeField(auto_now_add=True)
@@ -109,6 +169,11 @@ class MenuItem(models.Model):
         verbose_name = 'Item du menu'
         verbose_name_plural = 'Items du menu'
         ordering = ['type_item', 'nom']
+
+    def clean(self):
+        """Valider la taille du fichier image (max 5MB)"""
+        if self.image and self.image.size > 5 * 1024 * 1024:
+            raise ValidationError({'image': 'Image ne doit pas depasser 5MB'})
 
     def get_image(self):
         if self.image:
